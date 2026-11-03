@@ -11,12 +11,16 @@ jobs:
         with: { python-version: "3.11" }
       - uses: actions/setup-node@v4
         with: { node-version: "20" }
-      - run: pip install pyflakes usd-core
+      - run: pip install pyflakes usd-core numpy
       - name: lint
         run: |
           python -m pyflakes isaac tools
           node --input-type=module --check < web/main.js
-      - name: smoke test (real OpenUSD, stubbed Isaac runtime)
+      - name: robot IK from USD joints
+        run: python tests/test_usd_arm.py
+      - name: data checks (BOM / BOP)
+        run: python tests/test_plant_data.py
+      - name: smoke test (real OpenUSD, stubbed Isaac runtime, synthetic SimReady robots)
         run: python tests/smoke_build.py
   simready-resolve:
     runs-on: ubuntu-latest

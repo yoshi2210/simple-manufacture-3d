@@ -6,7 +6,10 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 window.addEventListener('error', e => { const m = document.getElementById('loadmsg'); if (m) m.textContent = 'エラー: ' + e.message; });
 
 // ============================================================ constants
-const C = 9.0, IDX = 2.2, DW = C - IDX;          // cycle, index move, dwell (s)
+const PLANT = __PLANT__;                           // data/plant.json (BOM + BOP), inlined by web/build.py
+const SCALE = PLANT.meta.demo_time_scale;
+const C = PLANT.meta.takt_s / SCALE, IDX = PLANT.meta.transfer_s / SCALE, DW = C - IDX;   // demo cycle / index / dwell (s)
+const V8ST = PLANT.lines.v8.stations, VST = PLANT.lines.vehicle.stations, PARTS = PLANT.parts;
 const G = 0.26, R = 0.68;                          // grip / release fraction of a pick-place op
 const ES = 0.8;                                    // engine scale
 const BELT_Y = 0.8;                                // V8 conveyor top
@@ -21,7 +24,7 @@ const Y_SKID = 0.35, Y_HANG = 1.5, Y_DIP = 0.75, RAIL_Y = 5.6;
 const XU = slotX(9);
 const STAND = new THREE.Vector3(XU, 0.95, -1.4);
 const PAINTS = [0xb3121b, 0x1d4f91, 0xeeeeee, 0x15171b, 0x9ea6ae, 0xd39b16, 0x2c6e49, 0x6b2d8c];
-const ST_NAMES = ['ST10 ブロック投入', 'ST20 クランクシャフト', 'ST30 ピストン L', 'ST40 ピストン R', 'ST50 シリンダーヘッド L', 'ST60 シリンダーヘッド R', 'ST70 インテーク', 'ST80 カバー類', 'ST90 ビジョン検査', 'ST100 払出し'];
+const ST_NAMES = V8ST.slice(0, 10).map(st => `${st.id} ${st.name}`);
 const AMR_ROUTES = [
   [[-30, -15.6], [32, -15.6], [32, -17.6], [-30, -17.6]],
   [[-60, 2.4], [-6, 2.4], [-6, 0.6], [-60, 0.6]],
@@ -349,7 +352,7 @@ function buildEngine() {
   const eng = new THREE.Group(), parts = [];
   // 0 block
   const blk = new THREE.Group();
-  blk.add(box(1.2, 0.42, 0.62, M.alu, 0, 0.35, 0), box(1.1, 0.16, 0.5, M.dark, 0, 0.08, 0));
+  blk.add(box(1.2, 0.42, 0.62, M.alu, 0, 0.35, 0));
   for (const side of [-1, 1]) {
     const b = bankFrame(side); b.add(box(1.15, 0.46, 0.3, M.alu, 0, 0, 0), box(1.17, 0.04, 0.32, M.alu, 0, 0.21, 0));
     for (let i = 0; i < 5; i++) b.add(box(0.03, 0.4, 0.04, M.alu, -0.5 + i * 0.25, -0.02, -side * 0.0 + (side > 0 ? 0.16 : -0.16)));
@@ -393,6 +396,7 @@ function buildEngine() {
     g.add(cyl(0.035, 0.035, 0.04, M.black, 10, 0.4, 0.52, 0.07));
     cv.add(g);
   }
+  cv.add(box(1.1, 0.16, 0.5, M.dark, 0, 0.06, 0));
   cv.add(box(0.06, 0.62, 0.7, M.black, 0.62, 0.55, 0), rotZ(cyl(0.09, 0.09, 0.15, M.steel, 16, 0.62, 0.92, 0.38), Math.PI / 2), rotZ(cyl(0.07, 0.07, 0.14, M.steel, 16, 0.62, 0.92, -0.38), Math.PI / 2));
   parts.push(cv);
   parts.forEach(p => eng.add(p));
@@ -504,12 +508,19 @@ function buildCar() {
   const shell = new THREE.Group();
   shell.add(box(3.1, 0.3, 1.8, paint, -0.65, 0.4, 0), box(1.1, 0.5, 1.8, paint, -1.7, 0.8, 0));
   for (const s of [-1, 1]) {
-    shell.add(box(2.0, 0.5, 0.1, paint, -0.15, 0.8, s * 0.85), box(1.3, 0.42, 0.14, paint, 1.58, 0.8, s * 0.83), box(1.3, 0.16, 0.12, paint, 1.55, 0.42, s * 0.62));
+    shell.add(box(1.3, 0.16, 0.12, paint, 1.55, 0.42, s * 0.62), box(2.0, 0.12, 0.1, paint, -0.15, 0.5, s * 0.86));
     shell.add(rotZ(box(0.08, 0.62, 0.08, paint, 0.65, 1.28, s * 0.78), 0.73), box(0.1, 0.46, 0.08, paint, -0.3, 1.28, s * 0.8), rotZ(box(0.1, 0.5, 0.08, paint, -1.25, 1.27, s * 0.78), -0.35));
     shell.add(box(0.5, 0.1, 0.1, paint, 1.55, 1.0, s * 0.83));
   }
   shell.add(box(0.14, 0.4, 1.8, paint, 2.25, 0.62, 0), box(0.1, 0.5, 1.6, paint, 0.92, 0.8, 0), box(0.12, 0.12, 1.3, paint, 2.1, 0.45, 0), box(1.7, 0.07, 1.62, paint, -0.42, 1.52, 0));
   const shellM = mergeObj(shell); car.add(shellM);
+  // closures (B50): per side [front door + fender], [rear door]
+  const closures = [];
+  for (const s of [-1, 1]) {
+    const f = new THREE.Group(); f.add(box(1.0, 0.44, 0.08, paint, 0.35, 0.84, s * 0.87), box(1.3, 0.42, 0.14, paint, 1.58, 0.8, s * 0.83), box(0.04, 0.05, 0.03, M.chrome, 0.05, 0.98, s * 0.92));
+    const r = new THREE.Group(); r.add(box(0.98, 0.44, 0.08, paint, -0.66, 0.84, s * 0.87), box(0.04, 0.05, 0.03, M.chrome, -0.95, 0.98, s * 0.92));
+    for (const g of [f, r]) { const m = mergeObj(g); car.add(m); closures.push(m); }
+  }
   const fin = new THREE.Group();
   fin.add(rotZ(box(0.03, 0.66, 1.52, M.glass, 0.63, 1.28, 0), 0.73), rotZ(box(0.03, 0.5, 1.5, M.glass, -1.24, 1.27, 0), -0.35));
   for (const s of [-1, 1]) fin.add(box(1.75, 0.38, 0.03, M.glass, -0.32, 1.27, s * 0.81));
@@ -528,7 +539,7 @@ function buildCar() {
   const trolley = box(4.5, 0.14, 0.18, M.frame, 0.1, 0, 0); hanger.add(trolley);
   car.add(hanger);
   scene.add(car);
-  return { car, paint, shellM, finM, wheels, eng, skid, hanger, bars, trolley };
+  return { car, paint, shellM, finM, wheels, eng, skid, hanger, bars, trolley, closures };
 }
 const WHEEL_POS = [[1.4, -0.86], [-1.4, -0.86], [1.4, 0.86], [-1.4, 0.86]];
 const CAR_POOL = 30, cars = []; for (let i = 0; i < CAR_POOL; i++) cars.push(buildCar());
@@ -548,9 +559,6 @@ const BIW = new THREE.Color(0x8a9096), tmpC = new THREE.Color();
     for (let x = r0 + 3.75; x <= r1; x += 6.5) for (const z of [-3.6, 3.6]) g.add(box(0.3, RAIL_Y + 0.6, 0.3, M.column, x, (RAIL_Y + 0.6) / 2, CL.z + z));
     for (let x = r0 + 3.75; x <= r1; x += 6.5) g.add(box(0.3, 0.3, 7.5, M.column, x, RAIL_Y + 0.55, CL.z));
     // geometry/framing gate at slot 4, transfer lift at slot 8
-    const gx = carX(4);
-    for (const z of [-2.6, 2.6]) g.add(box(0.5, 3.6, 0.5, M.frame, gx, 1.8, CL.z + z));
-    g.add(box(0.5, 0.6, 5.7, M.frame, gx, 3.6, CL.z));
     for (const z of [-1.4, 1.4]) g.add(box(0.3, 3.2, 0.3, M.yellow, carX(8) - 2.2, 1.6, CL.z + z), box(0.3, 3.2, 0.3, M.yellow, carX(8) + 2.2, 1.6, CL.z + z));
     // inspection light tunnel at slot 12
     const ix = carX(12);
@@ -613,6 +621,18 @@ for (const side of [-1, 1]) {
   rb.tip.add(carry); carry.visible = false;
   wheelBots.push({ rb, carry, side });
 }
+const closureBots = [];
+for (const side of [-1, 1]) {
+  const x = carX(4), rb = new Robot(x, CL.z + side * 2.85, { color: 0xd8432b, L1: 1.8, L2: 1.7, tool: 'vac' });
+  const rack = V(x - 1.6, 0, CL.z + side * 3.9);
+  staticGroup(g => { g.add(box(1.6, 0.25, 1.0, M.grey, rack.x, 0.125, rack.z)); for (let k = 0; k < 4; k++) g.add(box(0.06, 1.2, 0.9, M.frame, rack.x - 0.6 + k * 0.4, 0.85, rack.z)); for (let k = 0; k < 3; k++) g.add(box(1.0, 0.44, 0.06, M.steel, rack.x - 0.2 + k * 0.02, 0.9, rack.z - 0.3 + k * 0.25)); });
+  const pick = V(rack.x, 1.45, rack.z);
+  const doorTop = (dx) => V(x + dx, Y_SKID + 1.06 + 0.02, CL.z + side * 0.87);
+  rb.home = V(x - 0.3, 2.9, CL.z + side * 1.9);
+  rb.keys = [...ppKeys(rb.home, pick, doorTop(0.35), 0, 0.5, 0.5), ...ppKeys(rb.home, pick, doorTop(-0.66), 0.5, 1, 0.5).slice(1)];
+  const carry = new THREE.Group(); carry.add(box(1.0, 0.44, 0.08, M.steel, 0, -0.24, 0)); rb.tip.add(carry); carry.visible = false;
+  closureBots.push({ rb, carry });
+}
 const glassBot = { rb: new Robot(carX(11), CL.z + 2.9, { color: 0x2a7de1, L1: 1.9, L2: 1.8, tool: 'vac' }) };
 {
   const x = carX(11), rack = V(x + 1.9, 0, CL.z + 3.9);
@@ -662,7 +682,7 @@ function engineStage(q, k) { // which parts visible on pallet at slot q
 }
 function carState(c, k, t) {
   const a = k.n - c; if (a < 0 || a >= 26) return null;
-  const st = { x: 0, y: 0, z: CL.z, yaw: 0, paint: 0, engine: false, wheels: [false, false, false, false], finish: false, hanger: false, skid: false };
+  const st = { x: 0, y: 0, z: CL.z, yaw: 0, paint: 0, engine: false, wheels: [false, false, false, false], closures: [false, false, false, false], finish: false, hanger: false, skid: false };
   if (a <= 13) {
     const s = a, yFor = sl => sl <= 7 ? Y_SKID : Y_HANG;
     st.x = k.moving ? lerp(carX(s - 1), carX(s), k.mv) : carX(s);
@@ -673,12 +693,13 @@ function carState(c, k, t) {
     st.engine = s > 9 || (s === 9 && !k.moving && k.dw >= 0.5);
     for (let w = 0; w < 4; w++) { const op = w % 2; st.wheels[w] = s > 10 || (s === 10 && !k.moving && k.dw * 2 - op >= R); }
     st.finish = s > 11 || (s === 11 && !k.moving && k.dw >= R);
+    for (let j = 0; j < 4; j++) { const op = j % 2; st.closures[j] = s > 4 || (s === 4 && !k.moving && k.dw * 2 - op >= R); }
     st.skid = s <= 7 || (s === 8 && k.moving && k.mv < 0.5);
     st.hanger = s >= 8 && !(s === 13 && !k.moving && k.dw > 0.8);
   } else {
     const lp = lotPaths[mod(c, 12)], tau = t - (c + 14) * C, u = smooth(tau / lp.D);
     const p = lp.p.getPointAt(u), tg = lp.p.getTangentAt(Math.min(u, 0.999));
-    Object.assign(st, { x: p.x, y: 0, z: p.z, yaw: Math.atan2(-tg.z, tg.x), paint: 1, engine: true, wheels: [true, true, true, true], finish: true, driving: u < 1 });
+    Object.assign(st, { x: p.x, y: 0, z: p.z, yaw: Math.atan2(-tg.z, tg.x), paint: 1, engine: true, wheels: [true, true, true, true], closures: [true, true, true, true], finish: true, driving: u < 1 });
   }
   return st;
 }
@@ -721,7 +742,7 @@ function followInfo(t, k, out) {
   if (!st) { follow.k = k.n; return '次のエンジンへ'; }
   out.set(st.x, st.y + 1.0, st.z);
   if (k.n - c > 13) { if (!st.driving && t > (c + 16) * C) follow.k = k.n + 1; return st.driving ? '完成車ヤードへ自走中' : '完成車ヤードに到着 ✔'; }
-  const s = k.n - c; return ['', '', '', '', '', '', '', '', 'ハンガー移載', 'エンジン搭載（マリッジ）', 'タイヤ装着', 'ガラス・フード装着', '完成検査トンネル', '降車・出荷'][s] || '最終組立';
+  const s = k.n - c, vs = VST.find(v => v.slot === s); return vs ? `${vs.id} ${vs.name}` : '最終組立';
 }
 
 // ============================================================ UI: labels, stations
@@ -731,6 +752,7 @@ label('V8 エンジン組立ライン', V8.x0 + 12, 4.2, V8.zt - 3);
 label('ホットテスト', XU, 4.6, STAND.z);
 label('エンジン搬送コンベア', 12, 2.2, 3.2);
 label('ボディ溶接', carX(1.5), 4.2, CL.z);
+label('クロージャー取付', carX(4), 4.2, CL.z);
 label('塗装ブース', carX(6), 5.8, CL.z);
 label('エンジン搭載（マリッジ）', carX(9) + 1, 6.8, CL.z);
 label('タイヤ / ガラス装着', carX(10.5), 6.8, CL.z);
@@ -738,9 +760,99 @@ label('完成検査', carX(12), 5.6, CL.z);
 label('完成車ヤード', 46, 3, 8);
 ST_NAMES.forEach((n, i) => label(n, slotX(i), 3.2, V8.zt, true, 40));
 let showLabels = true;
-const stList = document.getElementById('stlist');
-ST_NAMES.forEach(n => { const d = document.createElement('div'); d.className = 'st'; d.innerHTML = `<i></i>${n}<em></em>`; stList.appendChild(d); });
-const stRows = [...stList.children];
+
+// ============================================================ BOM / BOP panel
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const isMaterial = id => /（(kg|g)）/.test(PARTS[id].name);
+const workT = st => st.ops.reduce((a, o) => a + o.t, 0);
+const countParts = sts => sts.reduce((a, st) => a + st.installs.filter(([id]) => !isMaterial(id)).reduce((b, [, q]) => b + q, 0), 0);
+const srItems = sts => new Set(sts.flatMap(st => st.installs.map(([id]) => PARTS[id].asset).filter(Boolean))).size;
+let tab = 'bop';
+const tabBody = document.getElementById('tabbody'), opsPanel = document.getElementById('ops');
+function v8State(e, t, k) {  // per V8 station: 'done' | 'now' | 'todo' for engine e
+  const q = k.n - e;
+  return V8ST.map((st, i) => {
+    if (st.id === 'HT10') { const tRel = (e + 9) * C + IDX + R * DW, tPush = (e + 10) * C + IDX + 0.05 * DW; return t < tRel ? 'todo' : t < tPush ? 'now' : 'done'; }
+    if (q > i) return 'done'; if (q < i || k.moving) return 'todo';
+    return k.dw >= (i === 8 ? 0.85 : R) ? 'done' : 'now';
+  });
+}
+function carStateList(c, k) {
+  const a = k.n - c;
+  return VST.map(st => { const s = st.slot; if (a > s) return 'done'; if (a < s || k.moving) return 'todo'; return k.dw >= 0.9 ? 'done' : 'now'; });
+}
+function bomSection(title, sts, states) {
+  let h = `<div class="sec">${esc(title)}</div>`;
+  sts.forEach((st, i) => {
+    if (!st.installs.length) return;
+    const stt = states ? states[i] : '';
+    h += `<div class="bst ${stt}"><i></i><b>${st.id}</b>${esc(st.name)}</div>`;
+    for (const [id, q] of st.installs) {
+      const P = PARTS[id], tag = P.asset ? `<span class="sr">SimReady</span>` : `<span class="px">代替</span>`;
+      h += `<div class="bl ${stt}"><span>${esc(P.name)}</span><em>${isMaterial(id) ? q : '×' + q}</em>${tag}</div>`;
+    }
+  });
+  return h;
+}
+function renderBOM(t, k) {
+  const vInst = VST.filter(st => st.installs.length);
+  if (!follow.on) {
+    tabBody.innerHTML = `<div class="hint">🎯 追従を押すと、そのエンジンと車両の組付け進捗がここに表示されます。</div>` +
+      `<div class="sum">V8 エンジン ${countParts(V8ST)} 点 ／ 車両 ${countParts(VST)} 点（SimReady 実モデル ${srItems(V8ST) + srItems(VST)} 品目）</div>` +
+      bomSection('V8 エンジン MBOM（工程別）', V8ST, null) + bomSection('車両 MBOM（工程別）', VST, null);
+    return;
+  }
+  const e = follow.k, c = e + 4, es = v8State(e, t, k), cs = carStateList(c, k);
+  const doneE = V8ST.reduce((a, st, i) => a + (es[i] === 'done' ? st.installs.filter(([id]) => !isMaterial(id)).reduce((b, [, q]) => b + q, 0) : 0), 0);
+  const doneC = VST.reduce((a, st, i) => a + (cs[i] === 'done' ? st.installs.filter(([id]) => !isMaterial(id)).reduce((b, [, q]) => b + q, 0) : 0), 0);
+  tabBody.innerHTML = `<div class="sum">🎯 エンジン #${e}：<b>${doneE} / ${countParts(V8ST)}</b> 点 組付け済</div>` + bomSection('V8 エンジン', V8ST, es) +
+    `<div class="sum">🚗 車両 #${c}（エンジン #${e} を搭載）：<b>${doneC} / ${countParts(VST)}</b> 点</div>` + bomSection('車両', VST, cs);
+}
+function renderBOP(k, hr) {
+  const row = (st, cls, stat) => `<div class="st ${cls}"><i></i><b>${st.id}</b>${esc(st.name)}<em>${stat}</em><small>${esc(st.resource)} · 作業 ${workT(st).toFixed(1)} s</small></div>`;
+  let h = `<div class="sec">${esc(PLANT.lines.v8.name)}</div>`;
+  V8ST.forEach((st, i) => {
+    if (st.id === 'HT10') { h += row(st, hr.on ? 'work' : '', hr.on ? `${Math.round(hr.rpm)} rpm` : '待機'); return; }
+    const working = !k.moving && (i !== 8 || k.dw < 0.85);
+    h += row(st, k.moving ? 'move' : working ? 'work' : '', k.moving ? '搬送' : (i === 8 ? (k.dw < 0.85 ? '検査中' : 'OK') : (k.dw < G ? 'ピック' : k.dw < R ? '組付け' : '完了')));
+  });
+  h += `<div class="sec">${esc(PLANT.lines.vehicle.name)}</div>`;
+  VST.forEach(st => h += row(st, k.moving ? 'move' : 'work', k.moving ? '搬送' : '作業中'));
+  tabBody.innerHTML = h;
+}
+function balanceChart(title, sts) {
+  const T = PLANT.meta.takt_s, TR = PLANT.meta.transfer_s, onLine = sts.filter(st => !st.offline);
+  const bott = onLine.reduce((a, b) => (workT(b) > workT(a) ? b : a));
+  const W = 330, LX = 78, BW = 200, RH = 17, top = 22, H = top + sts.length * RH + 22, xs = v => LX + (v / 60) * BW;
+  let g = '';
+  for (const v of [0, 20, 40, 60]) g += `<line x1="${xs(v)}" y1="${top - 4}" x2="${xs(v)}" y2="${H - 18}" class="grid"/><text x="${xs(v)}" y="${H - 6}" class="ax">${v}</text>`;
+  sts.forEach((st, i) => {
+    const y = top + i * RH, w = workT(st), tr = st.offline ? 0 : TR, isB = st === bott;
+    g += `<text x="${LX - 6}" y="${y + 11}" class="lb">${st.id}</text>`;
+    if (tr) g += `<rect x="${xs(0)}" y="${y + 3}" width="${xs(tr) - xs(0) - 2}" height="10" rx="2" class="tr"/>`;
+    g += `<rect x="${xs(tr)}" y="${y + 3}" width="${Math.max(2, xs(tr + w) - xs(tr))}" height="10" rx="2" class="${isB ? 'bn' : 'wk'}" data-st="${st.id}"/>`;
+    g += `<text x="${xs(tr + w) + 4}" y="${y + 11}" class="vl">${(tr + w).toFixed(1)}${isB ? ' ⚠' : ''}${st.offline ? ' (オフライン)' : ''}</text>`;
+    g += `<rect x="0" y="${y}" width="${W}" height="${RH}" fill="transparent" data-st="${st.id}" class="hit"/>`;
+  });
+  g += `<line x1="${xs(T)}" y1="${top - 8}" x2="${xs(T)}" y2="${H - 18}" class="takt"/><text x="${xs(T)}" y="${top - 11}" class="tk">タクト ${T} s</text>`;
+  const eff = onLine.reduce((a, st) => a + workT(st), 0) / (onLine.length * (T - TR)) * 100;
+  return `<div class="sec">${esc(title)}</div><svg viewBox="0 0 ${W} ${H}" class="bal" role="img" aria-label="${esc(title)} の工程別サイクルタイム">${g}</svg>` +
+    `<div class="bsum"><span class="bnk">⚠ ボトルネック</span> ${bott.id} ${esc(bott.name)}：作業 ${workT(bott).toFixed(1)} s ／ 作業可能 ${(T - TR).toFixed(1)} s<br>編成効率 ${eff.toFixed(0)}%（作業時間の合計 ÷ 工程数 × 作業可能時間）</div>`;
+}
+function renderBalance() {
+  tabBody.innerHTML = `<div class="hint"><i class="lg tr"></i>搬送 ${PLANT.meta.transfer_s} s　<i class="lg wk"></i>作業時間　バーをタップすると作業内訳</div>` +
+    balanceChart(PLANT.lines.v8.name, V8ST) + balanceChart(PLANT.lines.vehicle.name, VST) + `<div id="baltip" class="hint">—</div>`;
+}
+tabBody.addEventListener('pointerover', e => showOps(e)); tabBody.addEventListener('click', e => showOps(e));
+function showOps(e) {
+  const id = e.target.dataset && e.target.dataset.st; const tip = document.getElementById('baltip'); if (!id || !tip) return;
+  const st = [...V8ST, ...VST].find(x => x.id === id);
+  tip.innerHTML = `<b>${st.id} ${esc(st.name)}</b>（${esc(st.resource)}）<br>` + st.ops.map(o => `・${esc(o.d)}：${o.t.toFixed(1)} s`).join('<br>');
+}
+document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => {
+  tab = b.dataset.tab; document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x === b));
+  if (tab === 'bal') renderBalance(); else if (tab === 'bom') renderBOM(simT, clockAt(simT)); else renderBOP(clockAt(simT), hotRpm(simT, clockAt(simT)));
+}));
 
 // camera presets
 const CAMS = {
@@ -784,6 +896,8 @@ let simT = 40 * C, speed = 1, paused = false;
 const T0 = simT;
 const SPEEDS = [0.25, 0.5, 1, 2, 4, 8]; let spIdx = 2;
 const tmp = V(0, 0, 0), tmp2 = V(0, 0, 0);
+document.getElementById('sCycle').textContent = `${PLANT.meta.takt_s} s（×${SCALE} 再生）`;
+document.getElementById('sJph').textContent = `${(3600 / PLANT.meta.takt_s).toFixed(1)} 台/h`;
 const clockEl = { eng: document.getElementById('sEng'), car: document.getElementById('sCar'), rob: document.getElementById('sRob'), rpm: document.getElementById('rpm'), bar: document.querySelector('#rpmbar i'), sp: document.getElementById('sSpeed'), fol: document.getElementById('follow') };
 let last = performance.now(), uiTick = 0;
 
@@ -832,6 +946,7 @@ function update(t, dt) {
     const col = PAINTS[mod(c * 5 + 3, PAINTS.length)];
     tmpC.setHex(col); cr.paint.color.copy(BIW).lerp(tmpC, st.paint);
     cr.paint.metalness = lerp(0.55, 0.45, st.paint); cr.paint.roughness = lerp(0.5, 0.3, st.paint); cr.paint.clearcoat = st.paint;
+    cr.closures.forEach((m, j) => m.visible = st.closures[j]);
     cr.eng.visible = st.engine; cr.finM.visible = st.finish; cr.wheels.forEach((w, j) => w.visible = st.wheels[j]);
     cr.skid.visible = st.skid; cr.hanger.visible = st.hanger;
     if (st.hanger) { const h = RAIL_Y - 0.18 - st.y; cr.bars.forEach(b => { b.scale.y = h; b.position.y = 0.18 + h / 2; }); cr.trolley.position.y = RAIL_Y - st.y; }
@@ -845,6 +960,10 @@ function update(t, dt) {
   wheelBots.forEach(({ rb, carry }) => {
     rb.run(k.moving ? null : k.dw); if (rb.active) active++;
     const u = k.moving ? -1 : k.dw * 2, f = u - Math.floor(u), hold = u >= 0 && f >= G && f < R; carry.visible = hold; rb.grip(hold);
+  });
+  closureBots.forEach(({ rb, carry }) => {
+    rb.run(k.moving ? null : k.dw); if (rb.active) active++;
+    const u = k.moving ? -1 : k.dw * 2, f = u - Math.floor(u), hold = u >= 0 && f >= G && f < R; carry.visible = hold;
   });
   { glassBot.rb.run(k.moving ? null : k.dw); if (glassBot.rb.active) active++; glassBot.carry.visible = !k.moving && k.dw >= G && k.dw < R; }
   // AMRs
@@ -878,16 +997,12 @@ function frame(now) {
     clockEl.eng.textContent = Math.max(0, relCount(simT) - relCount(T0)).toLocaleString();
     const carCount = tt => Math.floor(tt / C) - 14;
     clockEl.car.textContent = Math.max(0, carCount(simT) - carCount(T0)).toLocaleString();
-    clockEl.rob.textContent = `${active} / ${stationBots.length + 1 + weldBots.length + paintBots.length + wheelBots.length + 1}`;
+    clockEl.rob.textContent = `${active} / ${stationBots.length + 1 + weldBots.length + paintBots.length + wheelBots.length + closureBots.length + 1}`;
     clockEl.rpm.textContent = `${Math.round(hr.rpm).toLocaleString()} rpm`; clockEl.bar.style.width = `${clamp(hr.rpm / 7000, 0, 1) * 100}%`;
     clockEl.sp.textContent = paused ? '一時停止' : `×${speed}`;
     clockEl.fol.style.display = follow.on ? 'block' : 'none';
     if (follow.on) clockEl.fol.textContent = `🎯 エンジン #${follow.k} — ${fText}`;
-    stRows.forEach((row, i) => {
-      const working = !k.moving && (i !== 8 ? true : k.dw < 0.85);
-      row.className = 'st ' + (k.moving ? 'move' : working ? 'work' : '');
-      row.querySelector('em').textContent = k.moving ? '搬送' : (i === 8 ? (k.dw < 0.85 ? '検査中' : 'OK') : (k.dw < G ? 'ピック' : k.dw < R ? '組付け' : '完了'));
-    });
+    if (opsPanel.classList.contains('show')) { if (tab === 'bop') renderBOP(k, hr); else if (tab === 'bom' && (follow.on || uiTick % 60 === 0)) renderBOM(simT, k); }
   }
 }
 
@@ -895,6 +1010,7 @@ function frame(now) {
 document.querySelectorAll('[data-cam]').forEach(b => b.addEventListener('click', () => { goCam(b.dataset.cam); document.querySelectorAll('[data-cam]').forEach(x => x.classList.toggle('on', x === b)); }));
 document.getElementById('bFollow').addEventListener('click', e => {
   follow.on = !follow.on; e.currentTarget.classList.toggle('on', follow.on);
+  if (tab === 'bom') setTimeout(() => renderBOM(simT, clockAt(simT)), 0);
   if (follow.on) { const k = clockAt(simT); follow.k = k.n; document.querySelectorAll('[data-cam]').forEach(x => x.classList.remove('on')); followInfo(simT, k, tmp); camAnim = { p0: camera.position.clone(), t0: controls.target.clone(), p: tmp.clone().add(V(4.5, 4, 6)), t: tmp.clone(), f: 0 }; }
 });
 const setSpeed = () => { speed = SPEEDS[spIdx]; };
@@ -904,10 +1020,10 @@ document.getElementById('bPause').addEventListener('click', e => { paused = !pau
 document.getElementById('bSound').addEventListener('click', e => {
   try { if (!audio) initAudio(); else { audio.on = !audio.on; } audio.ctx.resume(); e.currentTarget.classList.toggle('on', audio.on); if (audio.on && !follow.on) goCam('hot'); } catch (err) { e.currentTarget.textContent = '音声不可'; }
 });
-document.getElementById('bSt').addEventListener('click', e => { const s = document.getElementById('stations'); s.classList.toggle('show'); e.currentTarget.classList.toggle('on', s.classList.contains('show')); });
+document.getElementById('bSt').addEventListener('click', e => { const s = opsPanel; s.classList.toggle('show'); e.currentTarget.classList.toggle('on', s.classList.contains('show')); });
 document.getElementById('bLab').addEventListener('click', e => { showLabels = !showLabels; e.currentTarget.classList.toggle('on', !showLabels); });
 document.getElementById('bInfo').addEventListener('click', e => { const s = document.getElementById('info'); s.classList.toggle('show'); e.currentTarget.classList.toggle('on', s.classList.contains('show')); });
-if (innerWidth > 900) { document.getElementById('stations').classList.add('show'); document.getElementById('bSt').classList.add('on'); }
+if (innerWidth > 900) { opsPanel.classList.add('show'); document.getElementById('bSt').classList.add('on'); }
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
 update(simT, 0);

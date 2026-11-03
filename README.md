@@ -1,96 +1,97 @@
 # V8 Engine Plant Twin
 
-V8 エンジン組立ラインと自動車組立工場のデジタルツインです。2 つの形で動きます。
+V8 エンジン組立ラインから車両の最終組立までを再現した、デモ用の工場デジタルツインです。
+**BOM（部品表）と工程表（BOP）を 1 つのデータ（`data/plant.json`）にまとめ、そのデータで工場全体を動かします。**
+同じデータで、ブラウザ版と Isaac Sim 版の 2 つが動きます。
 
 | | ブラウザ版 `web/` | Isaac Sim 版 `isaac/` |
 |---|---|---|
-| 動く場所 | どのブラウザでも（スマホ可） | NVIDIA RTX GPU のマシン |
-| 3D モデル | 手続き生成の簡易モデル | **NVIDIA SimReady（OpenUSD）** + 簡易モデル |
-| ロボット | 22 台（独自 IK） | Isaac Sim の UR10（Lula IK） |
-| 用途 | 見せる・共有する | シミュレーション、レイアウト検討、拡張 |
+| 動く場所 | どの PC・スマホのブラウザでも | NVIDIA RTX GPU のマシン（クラウド VM 可） |
+| 3D モデル | 手続き生成の簡易モデル | **NVIDIA SimReady（OpenUSD）** の実モデル ＋ 簡易モデル |
+| ロボット | 24 台（独自の簡易 IK） | **Comau N-220-27 ×14、FANUC CRX-10iA ×8**（USD の関節定義から IK を計算） |
+| 用途 | デモ・共有 | 物理シミュレーション、レイアウト検討 |
 
-両方とも同じレイアウトと同じタイミング（サイクル 9 秒）で動きます。
+## デモの見どころ
+- **V8 組立ライン**: 周回パレット 24 台。ST10 ブロック投入 → ST20 クランク → ST30/40 ピストン → ST50/60 ヘッド → ST70 インテーク → ST80 カバー・オイルパン → ST90 ビジョン検査 → ST100 払出し
+- **ホットテスト**: 完成エンジンを始動して空ぶかし（ブラウザ版は回転数とエンジン音が連動）
+- **車体ライン**: 溶接 → クロージャー取付（ドア 4 枚）→ 塗装 → マリッジ（エンジン搭載）→ タイヤ → ガラス → 完成検査 → 完成車ヤード
+- **📋 工程 / BOM / ラインバランス**（ブラウザ版のパネル）
+  - 工程: 各ステーションの作業内容・設備・作業時間と、今の状態
+  - BOM: 工程ごとに組み付ける部品と数量。🎯追従中は、エンジン 1 基と車両 1 台の組付け進捗（例: 83 点中 37 点）
+  - ラインバランス: 工程別の作業時間とタクト 54 秒、ボトルネック、編成効率
+- **🎯 追従**: 1 基のエンジンを、ブロック投入から車両に搭載されて完成車ヤードに着くまで追いかける
 
-## 工場の構成
-- **V8 組立ライン**: 周回パレット 24 台。ST10 ブロック投入 → ST20 クランク → ST30/40 ピストン → ST50/60 ヘッド → ST70 インテーク → ST80 カバー類 → ST90 ビジョン検査 → ST100 払出し
-- **ホットテスト**: 完成エンジンを始動・空ぶかし（ブラウザ版は回転数とエンジン音が連動）
-- **エンジン搬送コンベア → マリッジ**: 吊られた車体を下ろしてエンジンを搭載
-- **車体ライン**: 溶接ロボット 8 台 → 塗装ブース → オーバーヘッドハンガー → タイヤ・ガラス装着 → 完成検査 → 完成車ヤード 12 区画
-- **物流**: AMR 4 台
+データは実在のメーカー・車種・工場のものではなく、デモ用の代表値です。アニメーションは実時間の 6 倍速で再生します。
 
 ---
 
 ## 1. ブラウザ版
-`web/index.html` を開くだけで動きます（three.js を CDN から読み込むため要ネット接続）。
-
+`web/index.html` を開くだけで動きます（three.js を CDN から読み込むため、ネット接続が必要です）。
 ```bash
 python3 -m http.server -d web 8000   # → http://localhost:8000
 ```
-編集は `web/main.js` と `web/template.html` で行い、`python3 web/build.py` を実行すると `index.html` が再生成されます。
+編集は `data/plant.json`、`web/main.js`、`web/template.html` で行い、`python3 web/build.py` を実行すると `index.html` が再生成されます。
 
 ## 2. Isaac Sim 版（GPU 環境でクローンして実行）
+ノート PC では動きません。RTX GPU のある Linux マシンかクラウド VM（NVIDIA Brev、AWS g5/g6 など）で実行し、映像はストリーミングで手元の PC から見ます。
 
-### 必要なもの
-- NVIDIA RTX GPU と対応ドライバ（Linux）
-- Docker + NVIDIA Container Toolkit
-- ネット接続（初回に Hugging Face から SimReady アセットを取得）
-
-### 実行（Docker、1 コマンド）
 ```bash
-git clone https://github.com/yoshi2210/v8-engine-plant-twin.git
-cd v8-engine-plant-twin
-./scripts/run_docker.sh                 # デスクトップで GUI 表示
-./scripts/run_docker.sh --livestream    # クラウド GPU（ヘッドレス）
+git clone <this repo> && cd <this repo>
+./scripts/run_docker.sh --livestream    # クラウド GPU（ヘッドレス）→ WebRTC で視聴
+./scripts/run_docker.sh                 # GPU 付きデスクトップで GUI 表示
 ```
-`--livestream` で起動した場合は、手元の PC から **Isaac Sim WebRTC Streaming Client** で接続して見ます。
-GPU を持っていない場合は、NVIDIA Brev などで RTX GPU インスタンスを借りて同じコマンドを実行してください。
+起動時に次の処理を自動で行います。
+1. Isaac Sim コンテナを起動する（既定は `nvcr.io/nvidia/isaac-sim:5.1.0`。6.x を試すときは `ISAAC_SIM_IMAGE=nvcr.io/nvidia/isaac-sim:6.1.0`）
+2. `tools/fetch_simready.py` で、使う SimReady パッケージ 45 個だけを Hugging Face からダウンロードする
+3. `isaac/build_v8_factory.py` で工場を組み立て、ロボットの配置と動作を計算してライブで動かす（ロボット動作の計算は初回だけ数分かかり、2 回目以降はキャッシュを使う）
 
-このスクリプトは次を自動で行います。
-1. `nvcr.io/nvidia/isaac-sim:5.1.0` コンテナを起動する（別の版を使うときは `ISAAC_SIM_IMAGE=...` を指定）
-2. `tools/fetch_simready.py` で、工場に必要な SimReady アセットだけを `assets/simready/` にダウンロードする
-3. `isaac/build_v8_factory.py` で工場を組み立て、ライブで動かす
+Isaac Sim をインストール済みの場合は、Docker を使わずに `ISAAC_SIM_PATH=~/isaacsim ./scripts/run_local.sh` でも実行できます。
 
-Isaac Sim をインストール済みの場合は、Docker を使わずに実行できます。
-```bash
-ISAAC_SIM_PATH=~/isaacsim ./scripts/run_local.sh
-```
-
-### 主なオプション（`build_v8_factory.py`）
 | オプション | 内容 |
 |---|---|
-| `--livestream` | ヘッドレスで起動し、WebRTC で配信 |
+| `--livestream` | ヘッドレスで起動し、WebRTC で配信する |
 | `--speed 2` | ラインの速度倍率 |
-| `--offline` | オンライン検索を行わない（取得済みの manifest と代替モデルだけで構築） |
-| `--save plant.usd --headless --frames 1` | 組み上がった工場を USD に書き出して終了 |
-| `--no-axis-fix` | Y-up アセットの自動回転を無効にする |
+| `--engine-detail proxy` | エンジン部品を軽量な代替形状にする（GPU が弱いとき） |
+| `--robots ur10` | SimReady のロボットの代わりに Isaac 同梱の UR10 を使う |
+| `--save plant.usd --headless --frames 1` | 組み上がった工場を USD に書き出して終了する |
 
-## SimReady アセットの使い方
-使うアセットは NVIDIA 公式カタログで 1 つずつ確認し、レビュー済みのコミットに固定しています。
-対象はロボット（Comau N-220-27、FANUC CRX ほか）、エンジン部品、車体フレームと外装部品、コンベア、物流機器、安全設備の 45 パッケージです。
-調査結果・SimReady に無いものと代わりの手段・Isaac Sim で動かせるか・改修計画は **[docs/simready-survey.md](docs/simready-survey.md)** にまとめています。
+### SimReady のロボットをどう動かしているか
+SimReady のロボット（Comau、FANUC）には、関節・可動範囲・駆動は定義されていますが、逆運動学（IK）の設定は含まれていません。
+`isaac/usd_arm.py` がロボットの USD から関節の並びを直接読み取って IK を解き、関節の駆動目標を書き込みます。
+- 各ロボットの実寸リーチに合わせて、立ち位置と台座の高さを自動で決める
+- 教示点（部品を取る・置く位置）に加えて経路上の中間点も IK で解き、関節が急に反転しないように動かす
+- 結果は `assets/simready/robot_cache.json` に保存され、2 回目以降の起動ではそのまま再利用する
 
+## データ（`data/plant.json`）
+- `parts`: 部品マスター。41 品目のうち 21 品目を SimReady のパッケージに対応付け済み（`asset`）
+- `lines.v8` / `lines.vehicle`: 各ステーションの作業（内容と秒数）、設備、組み付ける部品と数量（MBOM）
+- `ebom`: 車両の部品構成
+- `meta`: タクト 54 秒、搬送 13.2 秒、デモ再生 6 倍速
+
+## SimReady アセット
+使うアセットは NVIDIA 公式カタログで 1 つずつ確認し、レビュー済みのコミットに固定しています（`tools/fetch_simready.py`）。
+何が使えて何が無いか、Isaac Sim で動かせるかの調査結果は [docs/simready-survey.md](docs/simready-survey.md) にあります。
 ```bash
 python tools/fetch_simready.py --list-only            # 取得するパッケージの一覧
 python tools/fetch_simready.py --groups robots,engine # グループを指定して取得
 ```
-取得したアセットは、単位（cm / m）と上方向の軸（Y-up / Z-up）を自動で補正し、床に接地させて配置します。
 
-> 現時点の `build_v8_factory.py` が実際に使うのは、コンベア・車体フレーム・タイヤ・ラック・通い箱・カート・フェンスなどです。
-> Comau / FANUC のロボットとエンジン部品の組み込みは、改修計画の 1〜2 番目にあたります。
-
-## GPU がなくてもできる検証
+## GPU なしでできる検証（CI でも実行）
 ```bash
-pip install usd-core && python tests/smoke_build.py
+pip install usd-core numpy
+python tests/test_plant_data.py   # BOM / 工程表の整合性（作業時間がタクトに収まるか など）
+python tests/test_usd_arm.py      # USD から読んだロボット運動学が、正解の計算と一致するか
+python tests/smoke_build.py       # 本物の OpenUSD 上で工場全体を組み立てる（約 4 分）
 ```
-本物の OpenUSD ステージ上で、Isaac Sim の実行部分だけを差し替えて工場の構築処理を最後まで実行します。GitHub Actions でも同じテストを走らせ、さらに Hugging Face 上で SimReady のフォルダが解決できるかも確認します。
+`smoke_build.py` では、SimReady と同じ形式（Y-up・センチメートル単位・UsdPhysics の関節）の合成ロボットで 22 台すべての動作を計算します。全教示点に 1 mm 以内で到達し、関節が急に反転しないこと、2 回目の起動でキャッシュが使われることを確認しています。
 
 ## 制限事項
-- コンベア・パレット・車体の移動はタクトに同期させたキネマティック制御です（物理接触による搬送ではありません）。
-- ロボットの動きは、UR10 なら Lula IK、それ以外のアームでは近似の振り付けです。Isaac Sim 6 で推奨されている cuMotion への移行は今後の課題です。
-- SimReady の車体フレームを使った場合、ボディカラーの変化は簡易モデルの部分（フード）にしか反映されません。
-- サイクル 9 秒は見やすさのための短縮値です。実ラインのタクトではありません。
+- 実際の SimReady のデータと GPU 上の Isaac Sim では、まだ動作を確認していません（この開発環境から Hugging Face にアクセスできず、GPU も無いため）。最初の GPU 実行が実地の確認になります。
+- コンベア・パレット・車体の移動は、タクトに同期させたキネマティック制御です（物理的な接触による搬送ではありません）。部品の物理は無効化して配置しています。
+- SimReady の部品は車種ごとに作られたものではないため、寸法を合わせて配置しています。エンジンブロックは SimReady に無いので簡易形状です。
+- SimReady の車体フレームを使った場合、ボディカラーの変化は簡易形状の部品にしか反映されません。
 
 ## ライセンス
 - コード: MIT（`LICENSE`）
-- NVIDIA SimReady Assets: CC-BY-4.0（© NVIDIA）。アセットはこのリポジトリに含めず、実行時にダウンロードします。詳細は `NOTICE`
+- NVIDIA SimReady Assets / OEM パッケージ: CC-BY-4.0。リポジトリには含めず、実行時にダウンロードします（`NOTICE`）
 - three.js: MIT

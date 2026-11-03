@@ -29,14 +29,35 @@
   button.on{background:var(--acc);color:#111;border-color:transparent;font-weight:700}
   button:active{transform:scale(.97)}
   .sep{width:1px;background:var(--line);margin:2px 2px;flex:none}
-  #stations{top:10px;right:10px;padding:8px 10px;font-size:11px;width:236px;display:none}
-  #stations.show{display:block}
-  #stations h2{font-size:11px;margin:0 0 5px;color:var(--mut);letter-spacing:.08em;font-weight:600}
-  .st{display:flex;align-items:center;gap:7px;padding:2.5px 0}
-  .st i{width:8px;height:8px;border-radius:50%;background:#4a5562;flex:none}
-  .st.work i{background:var(--acc);box-shadow:0 0 8px var(--acc)}
-  .st.move i{background:var(--blue)}
-  .st em{margin-left:auto;font-style:normal;color:var(--mut);font-size:10px}
+  #ops{top:10px;right:10px;width:330px;display:none;padding:0;overflow:hidden}
+  #ops.show{display:flex;flex-direction:column;max-height:calc(100vh - 90px)}
+  .tabs{display:flex;gap:4px;padding:6px;border-bottom:1px solid var(--line)}
+  .tabs button{flex:1;padding:6px 4px;font-size:11.5px}
+  #tabbody{overflow:auto;padding:6px 10px 10px;font-size:11px}
+  .sec{font-size:10.5px;color:var(--mut);letter-spacing:.06em;margin:8px 0 3px;font-weight:600}
+  .st{display:grid;grid-template-columns:10px 36px 1fr auto;align-items:center;column-gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .st i,.bst i{width:8px;height:8px;border-radius:50%;background:#4a5562}
+  .st.work i,.bst.now i{background:var(--acc);box-shadow:0 0 8px var(--acc)}
+  .st.move i{background:var(--blue)} .bst.done i{background:var(--ok)}
+  .st b,.bst b{font-variant-numeric:tabular-nums;color:var(--txt)}
+  .st em{font-style:normal;color:var(--mut);font-size:10px;text-align:right}
+  .st small{grid-column:2/5;color:var(--mut);font-size:9.5px}
+  .bst{display:flex;align-items:center;gap:6px;margin-top:5px;font-weight:600}
+  .bst.todo{opacity:.55} .bl.todo{opacity:.45}
+  .bl{display:grid;grid-template-columns:1fr auto auto;gap:6px;padding:1px 0 1px 14px;color:#c9d0d8}
+  .bl em{font-style:normal;color:var(--mut);font-variant-numeric:tabular-nums}
+  .bl.done span:first-child::before{content:"✓ ";color:var(--ok)}
+  .sr,.px{font-size:9px;padding:0 5px;border-radius:5px;line-height:15px}
+  .sr{background:rgba(118,185,0,.18);color:#a7d65a} .px{background:rgba(255,255,255,.07);color:var(--mut)}
+  .sum{margin:8px 0 2px;font-size:11.5px} .hint{color:var(--mut);margin:4px 0;line-height:1.5}
+  svg.bal{width:100%;height:auto;display:block}
+  svg.bal .grid{stroke:rgba(255,255,255,.07)} svg.bal .ax{fill:#8d97a3;font-size:8px;text-anchor:middle}
+  svg.bal .lb{fill:#c3c9d0;font-size:9px;text-anchor:end} svg.bal .vl{fill:#c3c9d0;font-size:8.5px}
+  svg.bal .tr{fill:#3a4350} svg.bal .wk{fill:#3987e5} svg.bal .bn{fill:#fab219}
+  svg.bal .takt{stroke:#e9edf2;stroke-dasharray:3 3;stroke-width:1} svg.bal .tk{fill:#e9edf2;font-size:8.5px;text-anchor:middle}
+  svg.bal .hit{cursor:pointer}
+  .bsum{color:#c3c9d0;line-height:1.5;margin:2px 0 6px} .bnk{color:#111;background:#fab219;border-radius:4px;padding:0 5px;font-weight:700}
+  .lg{display:inline-block;width:10px;height:8px;border-radius:2px;margin:0 3px 0 0;vertical-align:middle} .lg.tr{background:#3a4350} .lg.wk{background:#3987e5}
   .label{position:fixed;left:0;top:0;pointer-events:none;font-size:11px;font-weight:600;color:#fff;background:rgba(10,12,16,.72);border:1px solid rgba(255,255,255,.14);padding:3px 7px;border-radius:7px;white-space:nowrap;transform:translate(-50%,-100%);will-change:transform}
   .label.small{font-size:10px;font-weight:500;background:rgba(255,154,46,.85);color:#111;border:none}
   #info{inset:auto 10px 70px 10px;max-width:520px;margin:auto;padding:14px 16px;font-size:12.5px;line-height:1.6;display:none;max-height:60vh;overflow:auto}
@@ -47,7 +68,7 @@
   #info td:first-child{color:var(--acc);white-space:nowrap}
   #load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:var(--bg);z-index:10;font-size:13px;color:var(--mut)}
   #load b{color:var(--txt);font-size:15px}
-  @media (max-width:640px){#hud{padding:8px 10px;min-width:0}#hud h1{font-size:12px}.stats{font-size:11px}#rpm{font-size:18px}.opt{display:none}#stations{top:auto;bottom:66px;right:10px;left:10px;width:auto}}
+  @media (max-width:640px){#hud{padding:8px 10px;min-width:0}#hud h1{font-size:12px}.stats{font-size:11px}#rpm{font-size:18px}.opt{display:none}#ops{top:auto;bottom:66px;right:8px;left:8px;width:auto}#ops.show{max-height:52vh}}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -60,7 +81,8 @@
 <div id="hud" class="panel">
   <h1><span class="live"><i></i>LIVE</span>V8 ENGINE PLANT · LINE 1</h1>
   <div class="stats">
-    <span>サイクルタイム</span><b id="sCycle">9.0 s</b>
+    <span>タクト</span><b id="sCycle">-</b>
+    <span>生産能力</span><b id="sJph">-</b>
     <span class="opt">シミュレーション速度</span><b class="opt" id="sSpeed">×1</b>
     <span>エンジン完成（今回）</span><b id="sEng">0</b>
     <span>完成車（今回）</span><b id="sCar">0</b>
@@ -70,20 +92,18 @@
   <div id="follow"></div>
 </div>
 
-<div id="stations" class="panel"><h2>V8 組立ライン · 工程ステータス</h2><div id="stlist"></div></div>
+<div id="ops" class="panel"><div class="tabs"><button data-tab="bop" class="on">工程（BOP）</button><button data-tab="bom">BOM</button><button data-tab="bal">ラインバランス</button></div><div id="tabbody"></div></div>
 
 <div id="info" class="panel">
-  <h3>このデジタルツインについて</h3>
-  ブラウザでそのまま動く軽量版です。形状は手続き生成の代替モデルで、同梱の Isaac Sim スクリプトでは同じレイアウトに NVIDIA SimReady（OpenUSD）アセットを配置します。
+  <h3>このデモについて</h3>
+  V8 エンジンと車両の <b>BOM（部品表）</b>と<b>工程表（BOP）</b>を 1 つのデータにまとめ、そのデータで工場全体を動かしています。同じデータを Isaac Sim 版でも使い、そちらでは NVIDIA SimReady の実モデル（Comau / FANUC のロボット、エンジン部品、車体部品など）を配置します。
   <table>
-    <tr><td>V8 ライン</td><td>周回パレットコンベア 24 台、組立ロボット 8 台、ビジョン検査ゲート、払出しロボット</td></tr>
-    <tr><td>ホットテスト</td><td>完成エンジンを始動・空ぶかし（回転数メーターと🔊エンジン音が連動）</td></tr>
-    <tr><td>ボディ溶接</td><td>スポット溶接ロボット 8 台（火花）</td></tr>
-    <tr><td>塗装ブース</td><td>塗装ロボット 2 台、車体ごとにボディカラーが変化</td></tr>
-    <tr><td>最終組立</td><td>オーバーヘッドハンガー、エンジン搭載（マリッジ）、タイヤ装着ロボット 2 台、ガラス装着ロボット</td></tr>
-    <tr><td>物流</td><td>エンジン搬送コンベア、AMR 4 台、完成車ヤード 12 区画</td></tr>
+    <tr><td>📋 工程</td><td>各ステーションの作業内容・設備・作業時間と、今の状態</td></tr>
+    <tr><td>📋 BOM</td><td>工程ごとに組み付ける部品と数量。🎯追従中は 1 台分の組付け進捗。「SimReady」は Isaac Sim 版で実モデルを使う部品</td></tr>
+    <tr><td>📋 ラインバランス</td><td>工程別の作業時間とタクト、ボトルネック、編成効率</td></tr>
+    <tr><td>🎯 追従</td><td>1 基のエンジンを、ブロック投入から車両に載って完成車ヤードに着くまで追いかける</td></tr>
   </table>
-  <p style="color:var(--mut);margin:8px 0 0">サイクルタイムは見やすさのため短縮しています（実ラインのタクトではありません）。「追従」で 1 基のエンジンをブロック投入から完成車ヤードまで追いかけます。</p>
+  <p style="color:var(--mut);margin:8px 0 0">データは実在のメーカー・車種・工場のものではなく、デモ用の代表値です。アニメーションは実時間の 6 倍速で再生しています。</p>
 </div>
 
 <div id="bar" class="panel">
@@ -100,7 +120,7 @@
   <button id="bFast">＋</button>
   <span class="sep"></span>
   <button id="bSound">🔊 音</button>
-  <button id="bSt">📋 工程</button>
+  <button id="bSt">📋 工程/BOM</button>
   <button id="bLab">🏷 ラベル</button>
   <button id="bInfo">ℹ︎</button>
 </div>

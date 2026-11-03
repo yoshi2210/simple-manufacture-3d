@@ -40,6 +40,12 @@ parser.add_argument("--assets", default=str(__import__("pathlib").Path(__file__)
                     help="tools/fetch_simready.py が書き出した manifest.json")
 parser.add_argument("--livestream", action="store_true", help="ヘッドレス + WebRTC ライブストリーム（クラウド GPU 向け）")
 parser.add_argument("--no-axis-fix", action="store_true", help="Y-up アセットの自動回転を無効化")
+parser.add_argument("--plant", default=str(__import__("pathlib").Path(__file__).resolve().parents[1] / "data" / "plant.json"),
+                    help="BOM / 工程表（ブラウザ版と共通）")
+parser.add_argument("--engine-detail", choices=["simready", "proxy"], default="simready",
+                    help="エンジン部品を SimReady 実モデルにするか、軽量な代替形状にするか")
+parser.add_argument("--robots", choices=["simready", "ur10"], default="simready",
+                    help="SimReady の Comau / FANUC を使うか、Isaac 同梱の UR10 を使うか")
 args, _ = parser.parse_known_args()
 
 from isaacsim import SimulationApp  # noqa: E402
@@ -56,7 +62,9 @@ if args.livestream:
 
 import numpy as np  # noqa: E402
 import omni.usd  # noqa: E402
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdShade  # noqa: E402
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from usd_arm import UsdArm  # noqa: E402
 from isaacsim.core.api import World  # noqa: E402
 from isaacsim.core.utils.stage import add_reference_to_stage  # noqa: E402
 
@@ -72,7 +80,10 @@ except ImportError:
 from isaacsim.core.utils.types import ArticulationAction  # noqa: E402
 
 # ------------------------------------------------------------------ timing / layout (shared with index.html)
-C, IDX = 9.0, 2.2                      # cycle time, index-move time (s)
+with open(args.plant, encoding="utf-8") as _f:
+    PLANT = json.load(_f)
+_SCALE = PLANT["meta"]["demo_time_scale"]
+C, IDX = PLANT["meta"]["takt_s"] / _SCALE, PLANT["meta"]["transfer_s"] / _SCALE   # demo cycle / index-move (s)
 DW = C - IDX
 G, R = 0.26, 0.68                      # grip / release fraction of a pick-and-place op
 BELT_Y = 0.8                           # V8 conveyor top height
@@ -92,6 +103,8 @@ def slot_s(q): return DP * (q + 0.5)
 def slot_x(q): return V8["x0"] + slot_s(q)
 def car_x(s): return CL["x0"] + s * CL["sp"]
 XU = slot_x(9)
+V8ST = PLANT["lines"]["v8"]["stations"]
+VST = PLANT["lines"]["vehicle"]["stations"]
 
 
 def P(x, up, zw):
@@ -295,17 +308,18 @@ def bx(path, w, h, d, x, y, z, mat, rot_x=0.0):
     return cube(path, (w, d, h), (p[0], p[1], p[2]), mat, (rot_x, 0, 0))
 
 
-_up_cache = {}
+_meta_cache = {}
 
 
-def asset_is_y_up(usd):
-    if usd not in _up_cache:
+def asset_meta(usd):
+    """(is Y-up, metersPerUnit) of an asset's root layer."""
+    if usd not in _meta_cache:
         try:
             st = Usd.Stage.Open(usd, load=Usd.Stage.LoadNone)
-            _up_cache[usd] = UsdGeom.GetStageUpAxis(st) == UsdGeom.Tokens.y
+            _meta_cache[usd] = (UsdGeom.GetStageUpAxis(st) == UsdGeom.Tokens.y, UsdGeom.GetStageMetersPerUnit(st) or 1.0)
         except Exception:
-            _up_cache[usd] = False
-    return _up_cache[usd]
+            _meta_cache[usd] = (False, 1.0)
+    return _meta_cache[usd]
 
 
 def world_range(prim):
@@ -318,11 +332,14 @@ def bbox_size(prim):
     return r.GetSize() if not r.IsEmpty() else Gf.Vec3d(1, 1, 1)
 
 
-def reference(path, usd, pos, yaw=0.0, fit=None, force_fit=False, snap=True):
-    """Reference a SimReady USD and normalise it: Y-up -> Z-up, unit fix (or exact fit), centre on pos, sit on pos.z.
+def reference(path, usd, pos, yaw=0.0, fit=None, force_fit=False, snap="floor", tilt_x=0.0, long_axis=None, units=False):
+    """Reference a SimReady USD and normalise it.
 
-    fit: expected largest horizontal size in metres. The asset is rescaled when its size is off by >2.5x
-    (a units mismatch such as cm vs m), or always when force_fit=True.
+    - Y-up -> Z-up, and (units=True) metersPerUnit -> metres, sanity-checked against the resulting size
+    - fit: expected largest horizontal size (m); rescale when off by >2.5x (unit mismatch), or always if force_fit
+    - long_axis="x": turn the asset so its longest horizontal side runs along X
+    - tilt_x: degrees about world X (applied after the yaw / alignment)
+    - snap: "floor" centre XY and sit on pos.z | "center" centre XYZ on pos | "base" only sit on pos.z | None
     """
     add_reference_to_stage(usd_path=usd, prim_path=path)
     prim = stage.GetPrimAtPath(path)
@@ -330,23 +347,62 @@ def reference(path, usd, pos, yaw=0.0, fit=None, force_fit=False, snap=True):
     x.ClearXformOpOrder()
     t = x.AddTranslateOp()
     t.Set(Gf.Vec3d(*pos))
-    x.AddRotateZOp().Set(math.degrees(yaw))
-    if not args.no_axis_fix and asset_is_y_up(usd):
-        x.AddRotateXOp().Set(90.0)
+    if tilt_x:
+        x.AddRotateXOp(opSuffix="tilt").Set(float(tilt_x))
+    rz = x.AddRotateZOp()
+    rz.Set(math.degrees(yaw))
+    y_up, mpu = asset_meta(usd)
+    if y_up and not args.no_axis_fix:
+        x.AddRotateXOp(opSuffix="upAxis").Set(90.0)
     sc = x.AddScaleOp()
     sc.Set(Gf.Vec3f(1, 1, 1))
+    if units and abs(mpu - 1.0) > 1e-6:
+        sc.Set(Gf.Vec3f(mpu, mpu, mpu))
+        m = max(bbox_size(prim))
+        if not (0.3 < m < 8.0):  # the runtime already converted units -> undo
+            sc.Set(Gf.Vec3f(1, 1, 1))
+    if long_axis == "x":
+        sz = bbox_size(prim)
+        if sz[1] > sz[0] * 1.15:
+            rz.Set(math.degrees(yaw) + 90.0)
     if fit:
         size = bbox_size(prim)
         m = max(size[0], size[1])
         if m > 1e-6:
             k = fit / m
             if force_fit or not (0.4 < k < 2.5):
-                sc.Set(Gf.Vec3f(k, k, k))
+                cur = sc.Get()
+                sc.Set(Gf.Vec3f(cur[0] * k, cur[1] * k, cur[2] * k))
     if snap:
         r = world_range(prim)
         if not r.IsEmpty():
-            c = r.GetMidpoint()
-            t.Set(Gf.Vec3d(pos[0] + (pos[0] - c[0]), pos[1] + (pos[1] - c[1]), pos[2] + (pos[2] - r.GetMin()[2])))
+            c, lo = r.GetMidpoint(), r.GetMin()
+            dx, dy = (pos[0] - c[0], pos[1] - c[1]) if snap in ("floor", "center") else (0.0, 0.0)
+            dz = pos[2] - (c[2] if snap == "center" else lo[2])
+            t.Set(Gf.Vec3d(pos[0] + dx, pos[1] + dy, pos[2] + dz))
+    return prim
+
+
+def disable_physics(prim):
+    """Props move kinematically with the line, so their rigid bodies must not simulate.
+    Prefer a physics variant (keeps the prim instanceable); otherwise switch rigid bodies off."""
+    vsets = prim.GetVariantSets()
+    for name in vsets.GetNames():
+        if "phys" in name.lower():
+            vs = vsets.GetVariantSet(name)
+            for v in vs.GetVariantNames():
+                if v.lower() in ("none", "disabled", "off", "visual", "nophysics", "no_physics"):
+                    vs.SetVariantSelection(v)
+                    return True
+    for p in Usd.PrimRange(prim):
+        if p.HasAPI(UsdPhysics.RigidBodyAPI):
+            UsdPhysics.RigidBodyAPI(p).CreateRigidBodyEnabledAttr(False)
+    return False
+
+
+def prop(path, usd, pos, **kw):
+    prim = reference(path, usd, pos, **kw)
+    disable_physics(prim)
     return prim
 
 
@@ -369,38 +425,70 @@ ENGINE_PARTS = ["Block", "Crank", "PistonsL", "PistonsR", "HeadL", "HeadR", "Int
 
 
 def build_engine(path):
-    """Creates an engine Xform with one child Xform per assembly stage. Returns (root Mover, [part prims])."""
+    """Engine Xform with one child per assembly stage (matches data/plant.json ST10-ST80).
+    SimReady engine components replace the proxy shapes where available; the block stays procedural
+    (SimReady has no V8 block)."""
     root = Mover(path)
     s = ES
     parts = []
-    eng_usd = assets.simready("engine")
-    for i, name in enumerate(ENGINE_PARTS):
-        pp = f"{path}/{name}"
-        UsdGeom.Xform.Define(stage, pp)
-        parts.append(stage.GetPrimAtPath(pp))
-    if eng_usd:  # use the SimReady engine as the bare block
-        reference(f"{path}/Block/SimReady", eng_usd, (0, 0, 0), fit=0.96, force_fit=True)
+    for name in ENGINE_PARTS:
+        UsdGeom.Xform.Define(stage, f"{path}/{name}")
+        parts.append(stage.GetPrimAtPath(f"{path}/{name}"))
+    sr = (lambda key: assets.simready(key)) if args.engine_detail == "simready" else (lambda key: None)
+    du = lambda side, h: (0.66 + h * 0.707) * s  # noqa: E731  deck height in a bank
+    dz = lambda side, h: (0.2 + h * 0.707) * s * side  # noqa: E731
+    # ST10 block (procedural)
+    bx(f"{path}/Block/case", 1.2 * s, 0.42 * s, 0.62 * s, 0, 0.35 * s, 0, MAT["alu"])
+    for side in (-1, 1):
+        bx(f"{path}/Block/bank{side + 1}", 1.15 * s, 0.46 * s, 0.3 * s, 0, 0.66 * s, 0.2 * s * side, MAT["alu"], rot_x=45 * side)
+    # ST20 crank + flywheel
+    if sr("crankshaft"):
+        prop(f"{path}/Crank/crankshaft", sr("crankshaft"), P(0, 0.3 * s, 0), fit=1.05, force_fit=True, long_axis="x", snap="center")
     else:
-        bx(f"{path}/Block/case", 1.2 * s, 0.42 * s, 0.62 * s, 0, 0.35 * s, 0, MAT["alu"])
-        bx(f"{path}/Block/pan", 1.1 * s, 0.16 * s, 0.5 * s, 0, 0.08 * s, 0, MAT["dark"])
-        for side in (-1, 1):
-            bx(f"{path}/Block/bank{side + 1}", 1.15 * s, 0.46 * s, 0.3 * s, 0, 0.66 * s, 0.2 * s * side, MAT["alu"], rot_x=45 * side)
-    cyl(f"{path}/Crank/shaft", 0.05 * s, 1.36 * s, (0, 0, 0.3 * s), MAT["steel"], "X")
-    cyl(f"{path}/Crank/flywheel", 0.3 * s, 0.05 * s, (-0.66 * s, 0, 0.3 * s), MAT["dark"], "X")
+        cyl(f"{path}/Crank/shaft", 0.05 * s, 1.36 * s, (0, 0, 0.3 * s), MAT["steel"], "X")
+    if sr("flywheel"):
+        prop(f"{path}/Crank/flywheel", sr("flywheel"), P(-0.66 * s, 0.3 * s, 0), fit=0.48, force_fit=True, snap="center")
+    else:
+        cyl(f"{path}/Crank/flywheel", 0.3 * s, 0.05 * s, (-0.66 * s, 0, 0.3 * s), MAT["dark"], "X")
     cyl(f"{path}/Crank/pulley", 0.15 * s, 0.08 * s, (0.7 * s, 0, 0.3 * s), MAT["black"], "X")
-    deck = lambda side, h: (0.66 + h * 0.707) * s, lambda side, h: (0.2 + h * 0.707) * s * side  # noqa: E731
+    # ST30 / ST40 pistons
     for k, side in ((2, -1), (3, 1)):
         for i in range(4):
             x = (-0.42 + i * 0.28) * s
-            cyl(f"{path}/{ENGINE_PARTS[k]}/p{i}", 0.088 * s, 0.05 * s, P(x, deck[0](side, 0.25), deck[1](side, 0.25)), MAT["steel"])
+            if sr("piston"):
+                prop(f"{path}/{ENGINE_PARTS[k]}/p{i}", sr("piston"), P(x, du(side, 0.25), dz(side, 0.25)), fit=0.15, force_fit=True, snap="center")
+            else:
+                cyl(f"{path}/{ENGINE_PARTS[k]}/p{i}", 0.088 * s, 0.05 * s, P(x, du(side, 0.25), dz(side, 0.25)), MAT["steel"])
+    # ST50 / ST60 heads + exhaust manifolds
     for k, side in ((4, -1), (5, 1)):
-        bx(f"{path}/{ENGINE_PARTS[k]}/head", 1.15 * s, 0.16 * s, 0.34 * s, 0, deck[0](side, 0.32), deck[1](side, 0.32), MAT["dark"], rot_x=45 * side)
-        bx(f"{path}/{ENGINE_PARTS[k]}/exhaust", 1.0 * s, 0.11 * s, 0.11 * s, 0, 0.62 * s, 0.52 * s * side, MAT["rust"])
-    bx(f"{path}/Intake/plenum", 0.9 * s, 0.14 * s, 0.26 * s, 0, 1.0 * s, 0, MAT["steel"])
-    bx(f"{path}/Intake/cap", 0.82 * s, 0.04 * s, 0.2 * s, 0, 1.09 * s, 0, MAT["red"])
+        if sr("cylinder_head"):
+            prop(f"{path}/{ENGINE_PARTS[k]}/head", sr("cylinder_head"), P(0, du(side, 0.32), dz(side, 0.32)), fit=0.92, force_fit=True,
+                 long_axis="x", tilt_x=45 * side, snap="center")
+        else:
+            bx(f"{path}/{ENGINE_PARTS[k]}/head", 1.15 * s, 0.16 * s, 0.34 * s, 0, du(side, 0.32), dz(side, 0.32), MAT["dark"], rot_x=45 * side)
+        if sr("exhaust_manifold"):
+            prop(f"{path}/{ENGINE_PARTS[k]}/exhaust", sr("exhaust_manifold"), P(0, 0.62 * s, 0.55 * s * side), fit=0.8, force_fit=True,
+                 long_axis="x", snap="center")
+        else:
+            bx(f"{path}/{ENGINE_PARTS[k]}/exhaust", 1.0 * s, 0.11 * s, 0.11 * s, 0, 0.62 * s, 0.52 * s * side, MAT["rust"])
+    # ST70 intake
+    if sr("intake_manifold"):
+        prop(f"{path}/Intake/manifold", sr("intake_manifold"), P(0, 1.02 * s, 0), fit=0.75, force_fit=True, long_axis="x", snap="center")
+    else:
+        bx(f"{path}/Intake/plenum", 0.9 * s, 0.14 * s, 0.26 * s, 0, 1.0 * s, 0, MAT["steel"])
+        bx(f"{path}/Intake/cap", 0.82 * s, 0.04 * s, 0.2 * s, 0, 1.09 * s, 0, MAT["red"])
+    # ST80 valve covers, timing, oil pan, water pump
     for side in (-1, 1):
-        bx(f"{path}/Covers/vc{side + 1}", 1.08 * s, 0.1 * s, 0.28 * s, 0, deck[0](side, 0.45), deck[1](side, 0.45), MAT["red"], rot_x=45 * side)
-    bx(f"{path}/Covers/timing", 0.06 * s, 0.62 * s, 0.7 * s, 0.62 * s, 0.55 * s, 0, MAT["black"])
+        bx(f"{path}/Covers/vc{side + 1}", 1.08 * s, 0.1 * s, 0.28 * s, 0, du(side, 0.45), dz(side, 0.45), MAT["red"], rot_x=45 * side)
+    if sr("timing_chain"):
+        prop(f"{path}/Covers/timing_chain", sr("timing_chain"), P(0.6 * s, 0.55 * s, 0), fit=0.45, force_fit=True, snap="center")
+    bx(f"{path}/Covers/timing", 0.06 * s, 0.62 * s, 0.7 * s, 0.64 * s, 0.55 * s, 0, MAT["black"])
+    if sr("oil_pan"):
+        prop(f"{path}/Covers/oil_pan", sr("oil_pan"), P(0, 0.07 * s, 0), fit=0.9, force_fit=True, long_axis="x", snap="center")
+    else:
+        bx(f"{path}/Covers/pan", 1.1 * s, 0.16 * s, 0.5 * s, 0, 0.06 * s, 0, MAT["dark"])
+    if sr("water_pump"):
+        prop(f"{path}/Covers/water_pump", sr("water_pump"), P(0.7 * s, 0.9 * s, 0.22 * s), fit=0.22, force_fit=True, snap="center")
     return root, parts
 
 
@@ -424,7 +512,7 @@ if conv_usd:
     n = max(1, int(V8["S"] // seg))
     for lane, z in (("top", V8["zt"]), ("bot", V8["zb"])):
         for i in range(n):
-            reference(f"{ROOT}/V8Line/{lane}_{i}", conv_usd, P(V8["x0"] + (i + 0.5) * seg, 0, z),
+            prop(f"{ROOT}/V8Line/{lane}_{i}", conv_usd, P(V8["x0"] + (i + 0.5) * seg, 0, z),
                       yaw=0.0 if along_x else math.pi / 2, fit=3.0)
 else:
     for lane, z in (("top", V8["zt"]), ("bot", V8["zb"])):
@@ -437,7 +525,7 @@ pallets = []
 for p in range(NP):
     pm = Mover(f"{ROOT}/V8Line/Pallet_{p:02d}")
     if pal_usd:
-        reference(f"{pm.path}/Body", pal_usd, (0, 0, 0), fit=1.9, force_fit=True)
+        prop(f"{pm.path}/Body", pal_usd, (0, 0, 0), fit=1.9, force_fit=True)
     else:
         cube(f"{pm.path}/Body", (1.9, 1.5, 0.1), (0, 0, 0.06), MAT["dark"])
     eng, parts = build_engine(f"{pm.path}/Engine")
@@ -463,55 +551,228 @@ def stage_vis(q, moving, dw):
 
 
 # ------------------------------------------------------------------ robots
+# SimReady arms (Comau N-220-27 for heavy work, FANUC CRX-10iA cobots on the V8 line) are driven with
+# usd_arm.UsdArm: IK is read from the robot's own USD joints, solved once per robot at start-up over one
+# cycle, then replayed by writing the joints' drive targets. UR10 + Lula / analytic remains as a fallback.
 UR10_LINKS = dict(a2=0.612, a3=0.5723, d1=0.1273, tool=0.25)
+ROBOT_SPECS = {
+    "cobot": dict(asset="robot_cobot", tool=0.24, pedestal=0.75, color="orange"),
+    "heavy": dict(asset="robot_heavy", tool=0.45, pedestal=0.0, color="red"),
+}
+TRAJ_SAMPLES = 96
+ROBOT_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(args.assets)), "robot_cache.json")
+try:
+    with open(ROBOT_CACHE_PATH, encoding="utf-8") as _f:
+        ROBOT_CACHE = json.load(_f)
+except Exception:
+    ROBOT_CACHE = {}
+VIA = 48            # IK via-points per dwell
 
 
 class LineRobot:
-    """Industrial arm doing a timed pick -> place cycle every dwell."""
+    """A station robot doing timed pick -> place operations every dwell (ops are split evenly over the dwell)."""
 
-    def __init__(self, name, base, pick, place, color="orange", pedestal=0.6):
-        self.name, self.base, self.pick, self.place = name, np.array(base, float), np.array(pick, float), np.array(place, float)
+    def __init__(self, name, base, ops, kind="cobot", carry_asset=None, carry_fit=0.4, lift=0.35):
+        self.name, self.kind = name, kind
+        self.base = np.array(base, float)
+        self.ops = [(np.array(a, float), np.array(b, float)) for a, b in ops]
+        self.lift = np.array([0, 0, lift])
         self.path = f"{ROOT}/Robots/{name}"
-        usd, self.kind = assets.robot()
-        cube(f"{ROOT}/Robots/{name}_pedestal", (0.6, 0.6, pedestal), (base[0], base[1], pedestal / 2), MAT["grey"])
-        self.base[2] = pedestal
-        self.art, self.ik = None, None
+        spec = ROBOT_SPECS[kind]
+        ped = spec["pedestal"]
+        a0, b0 = self.ops[0]
+        self.home = (a0 + b0) / 2 + np.array([0, 0, 0.6])
+        self.mode, self.arm, self.art, self.ik = "none", None, None, None
+        usd = assets.simready(spec["asset"]) if args.robots == "simready" else None
+        self.cache_key = None
         if usd:
-            reference(self.path, usd, tuple(self.base), yaw=0.0)
-        else:  # no robot asset at all -> static placeholder
-            cube(self.path, (0.5, 0.5, 1.6), (base[0], base[1], pedestal + 0.8), MAT[color])
-
-    def initialize(self):
-        if self.kind == "none":
-            return
-        self.art = SingleArticulation(prim_path=self.path, name=self.name)
-        self.art.initialize()
-        if self.kind == "ur10":
+            reference(self.path, usd, (base[0], base[1], 0.0), snap="base", units=True)
             try:
-                from isaacsim.robot_motion.motion_generation import (ArticulationKinematicsSolver,
-                                                                     LulaKinematicsSolver, interface_config_loader)
-                cfg = interface_config_loader.load_supported_lula_kinematics_solver_config("UR10")
-                lula = LulaKinematicsSolver(**cfg)
-                lula.set_robot_base_pose(self.base, np.array([1.0, 0, 0, 0]))
-                self.ik = ArticulationKinematicsSolver(self.art, lula, "ee_link")
+                self.arm = UsdArm(stage, self.path, tool_length=spec["tool"])
+                self.mode = "usd"
+                import hashlib
+                sig = json.dumps([usd, os.path.getsize(usd) if os.path.exists(usd) else 0, spec["tool"], self.lift.tolist(),
+                                  [[a.tolist(), b.tolist()] for a, b in self.ops], TRAJ_SAMPLES, VIA], sort_keys=True)
+                self.cache_key = f"{name}:{hashlib.sha1(sig.encode()).hexdigest()[:16]}"
+                hit = ROBOT_CACHE.get(self.cache_key)
+                if hit:
+                    ped = self._apply_placement(np.array(hit["xy"]), hit["ped"], spec["tool"])
+                else:
+                    ped = self._fit_placement(spec["tool"])
             except Exception as e:
-                print(f"[{self.name}] Lula IK unavailable ({e}); using analytic choreography")
+                print(f"[{name}] SimReady robot could not be set up ({e}); falling back")
+                stage.RemovePrim(self.path)
+                self.mode, self.arm, ped = "none", None, spec["pedestal"]
+        if ped > 0.02:
+            cube(f"{ROOT}/Robots/{name}_pedestal", (0.7, 0.7, ped), (self.base[0], self.base[1], ped / 2), MAT["grey"])
+        if self.mode == "none":
+            ur, kind_ = assets.robot() if assets.nucleus else (None, "none")
+            if ur and kind_ == "ur10":
+                reference(self.path, ur, (base[0], base[1], ped), snap=None)
+                self.mode = "ur10"
+            else:
+                cube(self.path, (0.5, 0.5, 1.6), (base[0], base[1], ped + 0.8), MAT[spec["color"]])
+        self.carry, self.carry_h = None, 0.0
+        if carry_asset:
+            self.carry = Mover(f"{ROOT}/Robots/{name}_carry")
+            prim = prop(f"{self.carry.path}/part", carry_asset, (0, 0, 0), fit=carry_fit, force_fit=True)
+            self.carry_h = float(bbox_size(prim)[2])
+            self.carry.show(False)
+        self.Q = None
+
+    def _fit_placement(self, tool):
+        """Place this robot for its real size. Candidate (distance from the work, pedestal height) pairs are
+        scored by actually solving IK for every pick / place point with the arm read from its USD, so the
+        layout adapts to whichever SimReady arm is loaded."""
+        import copy
+        a0 = self.arm
+        pts = [p for ab in self.ops for p in ab] + [p + self.lift for ab in self.ops for p in ab]
+        P_ = np.array(pts)
+        W = P_ + np.array([0, 0, tool])
+        h_sh = float(a0.points[1][2] - a0.points[0][2]) if a0.n > 1 else 0.3
+        reach = float(np.sum(np.linalg.norm(np.diff(np.vstack([a0.points[1:], a0.tool0]), axis=0), axis=1)) - tool)
+        centre = W[:, :2].mean(axis=0)
+        d0 = self.base[:2] - centre
+        direction = d0 / (np.linalg.norm(d0) + 1e-9)
+        lo_z, hi_z = W[:, 2].min(), W[:, 2].max()
+
+        def trial(dist, ped):
+            """worst miss over the taught points + penalty for any joint jump along the whole cycle"""
+            arm = copy.copy(a0)
+            delta = np.array([*(centre + direction * dist - self.base[:2]), ped])
+            arm.points, arm.tool0 = a0.points + delta, a0.tool0 + delta
+            arm.q = arm.solve_best(P_.mean(axis=0) + np.array([0, 0, 0.3]), seeds=6, iters=80)
+            err, jump, prev = 0.0, 0.0, arm.q.copy()
+            for u in np.linspace(0, 1, 25):
+                p = self.target(u)
+                q = arm.solve(p, iters=60, restarts=0)
+                e = float(np.linalg.norm(arm.fk(q)[0] - p))
+                if e > 3e-3:
+                    q = arm.solve_best(p, prev=prev, seeds=6, iters=80)
+                    e = float(np.linalg.norm(arm.fk(q)[0] - p))
+                err, jump, prev = max(err, e), max(jump, float(np.abs(q - prev).max())), q.copy()
+            return 10.0 * err + 0.005 * max(0.0, math.degrees(jump) - 30.0)
+
+        peds = sorted({float(np.clip(z - h_sh, 0.0, 1.6)) for z in (lo_z - 0.3, lo_z, lo_z + 0.3 * (hi_z - lo_z), (lo_z + hi_z) / 2)})
+        dists = [f * reach for f in (0.3, 0.4, 0.5, 0.6, 0.7)]
+        best = (1e9, dists[1], peds[0])
+        for ped in peds:
+            for dist in dists:
+                e = trial(dist, ped)
+                if e < best[0] - 1e-4:
+                    best = (e, dist, ped)
+            if best[0] < 0.03:
+                break
+        _, dist, ped = best
+        return self._apply_placement(centre + direction * dist, ped, tool)
+
+    def _apply_placement(self, xy, ped, tool):
+        prim = stage.GetPrimAtPath(self.path)
+        t = [op for op in UsdGeom.Xformable(prim).GetOrderedXformOps() if op.GetOpType() == UsdGeom.XformOp.TypeTranslate][0]
+        v = t.Get()
+        t.Set(Gf.Vec3d(v[0] + xy[0] - self.base[0], v[1] + xy[1] - self.base[1], v[2] + ped))
+        self.base = np.array([xy[0], xy[1], ped])
+        self.arm = UsdArm(stage, self.path, tool_length=tool)                      # re-read at the final pose
+        return ped
 
     def target(self, dw):
         """tool-tip target for this dwell fraction (dw<0 = home)."""
-        home = (self.pick + self.place) / 2 + np.array([0, 0, 0.6])
         if dw < 0:
-            return home
-        lift = np.array([0, 0, 0.35])
-        keys = [(0, home), (.14, self.pick + lift), (.22, self.pick), (.30, self.pick), (.38, self.pick + lift),
-                (.58, self.place + lift), (.64, self.place), (.72, self.place), (.80, self.place + lift), (1, home)]
+            return self.home
+        n = len(self.ops)
+        k = min(int(dw * n), n - 1)
+        u = dw * n - k
+        pick, place = self.ops[k]
+        keys = [(0, self.home), (.14, pick + self.lift), (.22, pick), (.30, pick), (.38, pick + self.lift),
+                (.58, place + self.lift), (.64, place), (.72, place), (.80, place + self.lift), (1, self.home)]
         for (ta, a), (tb, b) in zip(keys, keys[1:]):
-            if dw < tb:
-                return a + (b - a) * smooth((dw - ta) / (tb - ta))
-        return home
+            if u < tb:
+                return a + (b - a) * smooth((u - ta) / (tb - ta))
+        return self.home
+
+    def holding(self, moving, dw):
+        if moving or dw < 0:
+            return False
+        n = len(self.ops)
+        f = dw * n - min(int(dw * n), n - 1)
+        return G <= f < R
+
+    def _taught_points(self):
+        """(time in dwell, point) for every taught point of every op — same timing as target()."""
+        n, out = len(self.ops), []
+        for k, (pick, place) in enumerate(self.ops):
+            for tf, p in ((0, self.home), (.14, pick + self.lift), (.22, pick), (.30, pick), (.38, pick + self.lift),
+                          (.58, place + self.lift), (.64, place), (.72, place), (.80, place + self.lift), (1, self.home)):
+                t = (k + tf) / n
+                if not out or t > out[-1][0] + 1e-9:
+                    out.append((t, p))
+        return out
+
+    def precompute(self):
+        """Point-to-point motion like a taught industrial robot: IK only at the taught points (one consistent
+        arm configuration, each solved from the previous one), smooth joint interpolation in between.
+        Replayed every cycle (the line is periodic)."""
+        if self.mode != "usd":
+            return
+        a = self.arm
+        hit = ROBOT_CACHE.get(self.cache_key)
+        if hit and "Q" in hit:
+            self.Q_home, self.Q = np.array(hit["Q_home"]), np.array(hit["Q"])
+            self.key_err, self.reach_err, self.max_step = hit["key_err"], hit["reach_err"], hit["max_step"]
+            a.command(self.Q_home)
+            return
+        a.q = np.zeros(a.n)
+        pts = self._taught_points()
+        centroid = np.mean([p for _, p in pts], axis=0) + np.array([0, 0, 0.3])
+        q_c = a.solve_best(centroid).copy()          # one natural "working posture" over the work area
+        self.Q_home = a.solve_best(self.home, prev=q_c).copy()
+        # dense via-points along the Cartesian path, each solved from the previous one (continuity);
+        # a multi-seed search only when the warm start misses or would jump
+        times = sorted({round(k / VIA, 6) for k in range(VIA + 1)} | {round(t, 6) for t, _ in pts})
+        taught, key, prev = [], 0.0, self.Q_home
+        taught_t = {round(t, 6) for t, _ in pts}
+        for t in times:
+            p = self.target(t) if t < 1 else self.home
+            a.q = prev.copy()
+            q = a.solve(p, iters=120, restarts=0).copy()
+            if np.linalg.norm(a.fk(q)[0] - p) > 2e-3 or np.abs(q - prev).max() > math.radians(35):
+                q = a.solve_best(p, prev=prev).copy()
+            e = float(np.linalg.norm(a.fk(q)[0] - p))
+            if t in taught_t:
+                key = max(key, e)
+            taught.append((t, q))
+            prev = q
+        Q = []
+        for k in range(TRAJ_SAMPLES + 1):
+            u = k / TRAJ_SAMPLES
+            for (ta, qa), (tb, qb) in zip(taught, taught[1:]):
+                if u <= tb + 1e-9:
+                    Q.append(qa + (qb - qa) * smooth((u - ta) / max(tb - ta, 1e-9)))
+                    break
+        self.Q = np.array(Q)
+        self.key_err = key
+        self.reach_err = max(float(np.linalg.norm(a.fk(q)[0] - self.target(k / TRAJ_SAMPLES))) for k, q in enumerate(self.Q))
+        self.max_step = float(np.degrees(np.abs(np.diff(self.Q, axis=0)).max()))
+        ROBOT_CACHE[self.cache_key] = dict(xy=self.base[:2].tolist(), ped=float(self.base[2]), Q_home=self.Q_home.tolist(),
+                                           Q=self.Q.tolist(), key_err=self.key_err, reach_err=self.reach_err, max_step=self.max_step)
+        a.command(self.Q_home)
+
+    def initialize(self):
+        if self.mode != "ur10":
+            return
+        self.art = SingleArticulation(prim_path=self.path, name=self.name)
+        self.art.initialize()
+        try:
+            from isaacsim.robot_motion.motion_generation import (ArticulationKinematicsSolver,
+                                                                 LulaKinematicsSolver, interface_config_loader)
+            cfg = interface_config_loader.load_supported_lula_kinematics_solver_config("UR10")
+            lula = LulaKinematicsSolver(**cfg)
+            lula.set_robot_base_pose(self.base, np.array([1.0, 0, 0, 0]))
+            self.ik = ArticulationKinematicsSolver(self.art, lula, "ee_link")
+        except Exception as e:
+            print(f"[{self.name}] Lula IK unavailable ({e}); using analytic choreography")
 
     def analytic(self, tgt):
-        """UR-style joint choreography (tool pointing down). Works for UR10; approximate for other 6-axis arms."""
         d = tgt - self.base
         yaw = math.atan2(d[1], d[0])
         L1, L2 = UR10_LINKS["a2"], UR10_LINKS["a3"]
@@ -522,52 +783,79 @@ class LineRobot:
         s = math.atan2(h, r) + math.atan2(L2 * math.sin(e), L1 + L2 * math.cos(e))
         q = np.zeros(int(self.art.num_dof))
         vals = [yaw, -s, e, -math.pi / 2 + s - e, -math.pi / 2, 0.0]
-        k = min(6, len(q))
-        q[:k] = vals[:k]
+        q[:min(6, len(q))] = vals[:min(6, len(q))]
         return q
 
     def step(self, moving, dw):
-        if self.art is None:
-            return
-        tgt = self.target(-1 if moving else dw)
-        if self.ik is not None:
-            action, ok = self.ik.compute_inverse_kinematics(tgt, np.array([0, 1.0, 0, 0]))
-            if ok:
-                self.art.apply_action(action)
-                return
-        self.art.apply_action(ArticulationAction(joint_positions=self.analytic(tgt)))
+        if self.mode == "usd" and self.Q is not None:
+            if moving or dw < 0:
+                q = self.Q_home
+            else:
+                f = dw * TRAJ_SAMPLES
+                i = min(int(f), TRAJ_SAMPLES - 1)
+                q = self.Q[i] + (self.Q[i + 1] - self.Q[i]) * (f - i)
+            self.arm.command(q)
+        elif self.mode == "ur10" and self.art is not None:
+            tgt = self.target(-1 if moving else dw)
+            if self.ik is not None:
+                action, ok = self.ik.compute_inverse_kinematics(tgt, np.array([0, 1.0, 0, 0]))
+                if ok:
+                    self.art.apply_action(action)
+            else:
+                self.art.apply_action(ArticulationAction(joint_positions=self.analytic(tgt)))
+        if self.carry is not None:
+            hold = self.holding(moving, dw)
+            self.carry.show(hold)
+            if hold:
+                p = self.arm.fk(q)[0] if self.mode == "usd" and self.Q is not None else self.target(dw)
+                self.carry.set((p[0], p[1], p[2] - self.carry_h))
 
 
 def lane_y(zw): return -zw   # web z -> Isaac y
 
 
 robots = []
-REACH_OFF = 1.15  # base offset from the lane for a UR10-class arm (scale up for larger SimReady arms)
+# V8 line: FANUC CRX-10iA cobots on the inner side of the loop (reach ~1.25 m), parts table beside each
+V8_CARRY = [None, "crankshaft", "piston", "piston", "cylinder_head", "cylinder_head", "intake_manifold", "oil_pan"]
+V8_PLACE_Z = [1.66, 1.25, 1.62, 1.62, 1.75, 1.75, 1.75, 1.8]
 for i in range(8):
-    x = slot_x(i)
-    place = (x, lane_y(V8["zt"]) + 0.2, BELT_Y + 0.12 + 0.75)
-    base = (x, lane_y(V8["zt"]) + REACH_OFF + 0.2, 0)
-    pick = (x - 0.9, base[1] + 0.3, 1.05)
-    cube(f"{ROOT}/V8Line/Table_{i}", (0.8, 0.7, 0.85), (pick[0], pick[1], 0.425), MAT["grey"])
-    crate = assets.simready("crate")
+    x, ly = slot_x(i), lane_y(V8["zt"])
+    place = (x, ly + 0.2, V8_PLACE_Z[i])
+    pick = (x - 0.75, ly + 1.1, 1.0)
+    cube(f"{ROOT}/V8Line/Table_{i}", (0.7, 0.6, 0.85), (pick[0], pick[1], 0.425), MAT["grey"])
+    key = V8_CARRY[i]
+    part_usd = assets.simready(key) if key and args.engine_detail == "simready" else None
+    if part_usd:
+        prop(f"{ROOT}/V8Line/Stock_{i}", part_usd, (pick[0], pick[1], 0.85), fit=0.45)
+    crate = assets.simready("small_load_carrier") or assets.simready("crate")
     if crate:
-        reference(f"{ROOT}/V8Line/Crate_{i}", crate, (pick[0] - 0.9, pick[1], 0), fit=0.6)
-    robots.append(LineRobot(f"ST{(i + 1) * 10}", base, pick, place))
-robots.append(LineRobot("ST100_Unload", (XU - 0.9, lane_y(-3.2), 0), (XU, lane_y(V8["zt"]), BELT_Y + 0.9),
-                        (XU, lane_y(-1.4), 1.85)))
-for s in range(4):
+        prop(f"{ROOT}/V8Line/Bin_{i}", crate, (pick[0] - 0.8, pick[1], 0), fit=0.6)
+    robots.append(LineRobot(V8ST[i]["id"], (x, ly + 0.95, 0), [(pick, place)], "cobot", part_usd, 0.45))
+# ST100 unload: Comau N-220-27 moves the finished engine to the hot-test bench
+robots.append(LineRobot("ST100", (XU - 1.6, lane_y(-3.2), 0), [((XU, lane_y(V8["zt"]), 1.7), (XU, lane_y(-1.4), 1.9))], "heavy"))
+# body shop: 8 welding robots
+for s_ in range(4):
     for side in (-1, 1):
-        bxw = car_x(s)
-        place = (bxw, lane_y(CL["z"]) - side * 0.95, Y_SKID + 1.0)
-        robots.append(LineRobot(f"Weld_{s}_{'L' if side < 0 else 'R'}", (bxw, lane_y(CL["z"]) - side * 1.9, 0),
-                                (bxw - 0.6, place[1], 1.0), place, color="red", pedestal=0.4))
+        bxw, cy = car_x(s_), lane_y(CL["z"])
+        a = (bxw - 0.9, cy - side * 0.98, Y_SKID + 0.9)
+        b = (bxw + 0.9, cy - side * 0.98, Y_SKID + 1.25)
+        robots.append(LineRobot(f"B{(s_ + 1) * 10}_{'L' if side < 0 else 'R'}", (bxw, cy - side * 2.3, 0), [(a, b)], "heavy", lift=0.2))
+# B50 closures: doors (front then rear) on each side
 for side in (-1, 1):
-    x = car_x(10)
-    robots.append(LineRobot(f"Wheel_{'L' if side < 0 else 'R'}", (x, lane_y(CL["z"]) - side * 1.9, 0),
-                            (x, lane_y(CL["z"]) - side * 2.9, 1.2), (x + 1.4, lane_y(CL["z"]) - side * 0.86, Y_HANG + 0.34),
-                            pedestal=0.9))
-robots.append(LineRobot("Glass", (car_x(11), lane_y(CL["z"]) - 1.9, 0), (car_x(11) + 1.0, lane_y(CL["z"]) - 2.9, 1.3),
-                        (car_x(11) + 0.63, lane_y(CL["z"]), Y_HANG + 1.3), pedestal=1.2))
+    x, cy = car_x(4), lane_y(CL["z"])
+    rack = (x - 2.4, cy - side * 2.0, 1.5)
+    door = lambda dx: (x + dx, cy - side * 0.9, Y_SKID + 1.08)  # noqa: E731
+    robots.append(LineRobot(f"B50_{'L' if side < 0 else 'R'}", (x, cy - side * 2.6, 0), [(rack, door(0.35)), (rack, door(-0.66))],
+                            "heavy", assets.simready("door_front"), 1.0))
+# T30 wheels and T40 glass
+for side in (-1, 1):
+    x, cy = car_x(10), lane_y(CL["z"])
+    rack = (x, cy - side * 3.0, 1.3)
+    wheel = lambda dx: (x + dx, cy - side * 0.98, Y_HANG + 0.7)  # noqa: E731
+    robots.append(LineRobot(f"T30_{'L' if side < 0 else 'R'}", (x, cy - side * 2.6, 0), [(rack, wheel(1.4)), (rack, wheel(-1.4))],
+                            "heavy", assets.simready("tire"), 0.68))
+robots.append(LineRobot("T40", (car_x(11), lane_y(CL["z"]) - 2.7, 0),
+                        [((car_x(11) + 1.9, lane_y(CL["z"]) - 3.9, 1.35), (car_x(11) + 0.63, lane_y(CL["z"]), Y_HANG + 1.34))], "heavy"))
 
 # ------------------------------------------------------------------ hot test, transfer belt, car line
 cube(f"{ROOT}/HotTest/Stand", (1.6, 1.3, 0.75), (XU, lane_y(-1.4), 0.4), MAT["dark"])
@@ -604,9 +892,10 @@ bx(f"{ROOT}/CarLine/PaintBooth", car_x(7) - car_x(5) + 6.2, 4.6, 6.6, car_x(6), 
 
 
 def build_car(path):
+    """Car = Shell (BIW, B10-B40) + Closures (B50) + paint (P20) + Engine (T20) + Wheels (T30) + Finish (T40)."""
     m = Mover(path)
     sub = {}
-    for k in ("Shell", "Finish", "Wheels", "Engine"):
+    for k in ("Shell", "Closures", "Finish", "Wheels", "Engine"):
         UsdGeom.Xform.Define(stage, f"{path}/{k}")
         sub[k] = stage.GetPrimAtPath(f"{path}/{k}")
     paint = UsdShade.Material.Define(stage, f"{path}/Paint")
@@ -620,37 +909,56 @@ def build_car(path):
     paint.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(), "surface")
     pm = (paint, sh)
     frame = assets.simready("car_frame")
-    if frame:  # SimReady body-in-white frame instead of the box shell
-        reference(f"{path}/Shell/frame", frame, (0, 0, 0.25), fit=4.4, force_fit=True)
-        bx(f"{path}/Finish/hood", 1.3, 0.05, 1.62, 1.58, 1.08, 0, pm)
-        bx(f"{path}/Finish/windshield", 0.03, 0.66, 1.52, 0.63, 1.28, 0, MAT["glass"])
-        _wheels_and_engine(path)
-        return dict(m=m, sub=sub, col=col, vis={k: True for k in sub})
-    bx(f"{path}/Shell/floor", 3.1, 0.3, 1.8, -0.65, 0.4, 0, pm)
-    bx(f"{path}/Shell/rear", 1.1, 0.5, 1.8, -1.7, 0.8, 0, pm)
-    bx(f"{path}/Shell/roof", 1.7, 0.07, 1.62, -0.42, 1.52, 0, pm)
+    if frame:  # SimReady body-in-white
+        prop(f"{path}/Shell/frame", frame, (0, 0, 0.25), fit=4.4, force_fit=True, long_axis="x")
+    else:
+        bx(f"{path}/Shell/floor", 3.1, 0.3, 1.8, -0.65, 0.4, 0, pm)
+        bx(f"{path}/Shell/rear", 1.1, 0.5, 1.8, -1.7, 0.8, 0, pm)
+        bx(f"{path}/Shell/roof", 1.7, 0.07, 1.62, -0.42, 1.52, 0, pm)
+        bx(f"{path}/Shell/firewall", 0.1, 0.5, 1.6, 0.92, 0.8, 0, pm)
+        for side in (-1, 1):
+            bx(f"{path}/Shell/bpillar{'L' if side < 0 else 'R'}", 0.1, 0.46, 0.08, -0.3, 1.28, 0.8 * side, pm)
+    # closures: doors / fenders (SimReady parts are one-handed, so the other side is mirrored)
     for side in (-1, 1):
         n = "L" if side < 0 else "R"
-        bx(f"{path}/Shell/door{n}", 2.0, 0.5, 0.1, -0.15, 0.8, 0.85 * side, pm)
-        bx(f"{path}/Shell/fender{n}", 1.3, 0.42, 0.14, 1.58, 0.8, 0.83 * side, pm)
-        bx(f"{path}/Shell/bpillar{n}", 0.1, 0.46, 0.08, -0.3, 1.28, 0.8 * side, pm)
-    bx(f"{path}/Shell/firewall", 0.1, 0.5, 1.6, 0.92, 0.8, 0, pm)
-    bx(f"{path}/Shell/bumper", 0.14, 0.4, 1.8, 2.25, 0.62, 0, pm)
-    bx(f"{path}/Finish/hood", 1.3, 0.05, 1.62, 1.58, 1.08, 0, pm)
+        for key, dx, w in (("door_front", 0.35, 1.0), ("door_rear", -0.66, 0.98), ("fender_front", 1.58, 1.3)):
+            usd = assets.simready(key)
+            if usd:
+                prim = prop(f"{path}/Closures/{key}_{n}", usd, P(dx, 0.62, 0.88 * side), fit=w, force_fit=True, long_axis="x")
+                if side > 0:
+                    sc = [op for op in UsdGeom.Xformable(prim).GetOrderedXformOps() if op.GetOpType() == UsdGeom.XformOp.TypeScale][0]
+                    v = sc.Get()
+                    sc.Set(Gf.Vec3f(v[0], -v[1], v[2]))
+            else:
+                bx(f"{path}/Closures/{key}_{n}", w, 0.44, 0.08, dx, 0.84, 0.87 * side, pm)
+    hood = assets.simready("hood")
+    if hood:
+        prop(f"{path}/Finish/hood", hood, P(1.58, 1.0, 0), fit=1.6, force_fit=True)
+    else:
+        bx(f"{path}/Finish/hood", 1.3, 0.05, 1.62, 1.58, 1.08, 0, pm)
+    for key, dx in (("bumper_front", 2.28), ("bumper_rear", -2.3)):
+        usd = assets.simready(key)
+        if usd:
+            prop(f"{path}/Finish/{key}", usd, P(dx, 0.3, 0), fit=1.85, force_fit=True)
     bx(f"{path}/Finish/windshield", 0.03, 0.66, 1.52, 0.63, 1.28, 0, MAT["glass"])
     _wheels_and_engine(path)
     return dict(m=m, sub=sub, col=col, vis={k: True for k in sub})
 
 
 def _wheels_and_engine(path):
-    tire = assets.simready("tire")
+    tire, rim = assets.simready("tire"), assets.simready("wheel_rim")
     for i, (wx, wz) in enumerate(((1.4, -0.86), (-1.4, -0.86), (1.4, 0.86), (-1.4, 0.86))):
         if tire:
-            reference(f"{path}/Wheels/w{i}", tire, P(wx, 0.0, wz), fit=0.68, force_fit=True)
+            prop(f"{path}/Wheels/w{i}", tire, P(wx, 0.0, wz), fit=0.68, force_fit=True)
+            if rim:
+                prop(f"{path}/Wheels/r{i}", rim, P(wx, 0.34, wz), fit=0.45, force_fit=True, snap="center")
         else:
             cyl(f"{path}/Wheels/w{i}", 0.34, 0.24, P(wx, 0.34, wz), MAT["black"], "Y")
     bx(f"{path}/Engine/block", 0.9, 0.7, 0.7, 1.55, 0.45, 0, MAT["alu"])
     bx(f"{path}/Engine/covers", 0.86, 0.1, 0.8, 1.55, 0.85, 0, MAT["red"])
+    trn = assets.simready("transmission")
+    if trn:
+        prop(f"{path}/Engine/transmission", trn, P(0.6, 0.35, 0), fit=0.8, force_fit=True, long_axis="x", snap="center")
 
 
 CAR_POOL = 30
@@ -661,7 +969,7 @@ LOT = [(37 + (i % 6) * 3.5, 15.2 if i >= 6 else 0.8) for i in range(12)]
 veh = assets.simready("vehicle")
 if veh:  # a few SimReady cars parked as display in front of the yard
     for i in range(3):
-        reference(f"{ROOT}/Yard/Display_{i}", veh, P(40 + i * 5, 0, 21), yaw=math.pi / 2, fit=4.6)
+        prop(f"{ROOT}/Yard/Display_{i}", veh, P(40 + i * 5, 0, 21), yaw=math.pi / 2, fit=4.6)
 DECOR = [("rack", -40, -21, 0, 3.0), ("rack", -30, -21, 0, 3.0), ("tire_rack", car_x(10) + 1, 14.5, 0, 2.0), ("small_load_carrier", -12, -8.5, 0, 0.6), ("lift_table", 10, -8.6, 0, 1.6),
          ("air_compressor", XU + 3.5, -2.5, 0, 1.5), ("parts_cart", car_x(10) + 3, 13.5, 0, 1.2), ("parts_cart", car_x(11) + 3, 13.5, 0, 1.2),
          ("safety_gate", V8["x0"] - 6, -15, math.pi / 2, 2.0)]
@@ -669,7 +977,7 @@ DECOR += [("fence", x, V8["zb"] - 3.0, 0, 2.4) for x in range(int(V8["x0"]) - 4,
 for i, (key, x, zw, yaw, fit) in enumerate(DECOR):
     usd = assets.simready(key)
     if usd:
-        reference(f"{ROOT}/Decor/{key}_{i}", usd, P(x, 0, zw), yaw=yaw, fit=fit)
+        prop(f"{ROOT}/Decor/{key}_{i}", usd, P(x, 0, zw), yaw=yaw, fit=fit)
 
 amr_usd = assets.simready("amr")
 AMR_ROUTES = [[(-30, -15.6), (32, -15.6), (32, -17.6), (-30, -17.6)], [(-60, 2.4), (-6, 2.4), (-6, 0.6), (-60, 0.6)]]
@@ -678,12 +986,12 @@ for ri, route in enumerate(AMR_ROUTES):
     for k in range(2):
         m = Mover(f"{ROOT}/AMR/amr_{ri}_{k}")
         if amr_usd:
-            reference(f"{m.path}/Body", amr_usd, (0, 0, 0), fit=1.4)
+            prop(f"{m.path}/Body", amr_usd, (0, 0, 0), fit=1.4)
         else:
             cube(f"{m.path}/Body", (1.4, 0.9, 0.35), (0, 0, 0.22), MAT["white"])
             box_usd = assets.simready("box")
             if box_usd:
-                reference(f"{m.path}/Load", box_usd, (0, 0, 0.4), fit=0.8)
+                prop(f"{m.path}/Load", box_usd, (0, 0, 0.4), fit=0.8)
             else:
                 cube(f"{m.path}/Load", (1.1, 0.75, 0.35), (0, 0, 0.57), MAT["yellow"])
         amrs.append(dict(m=m, route=route, off=k / 2))
@@ -720,6 +1028,7 @@ def car_state(c, n, moving, mv, dw, t):
         st["Engine"] = s > 9 or (s == 9 and not moving and dw >= .5)
         st["Wheels"] = s > 10 or (s == 10 and not moving and dw >= R)
         st["Finish"] = s > 11 or (s == 11 and not moving and dw >= R)
+        st["Closures"] = s > 4 or (s == 4 and not moving and dw >= 0.9)
     else:
         lx, lz = LOT[c % 12]
         tau = t - (c + 14) * C
@@ -731,7 +1040,7 @@ def car_state(c, n, moving, mv, dw, t):
         else:
             f = (u - 0.7) / 0.3
             st["x"], st["z"], st["yaw"] = lx, lerp(CL["z"], lz, f), (math.pi / 2 if lz < CL["z"] else -math.pi / 2) * min(1, f * 3)
-        st.update(y=0.0, paint=1.0, Engine=True, Wheels=True, Finish=True)
+        st.update(y=0.0, paint=1.0, Engine=True, Wheels=True, Finish=True, Closures=True)
     st["Shell"] = True
     return st
 
@@ -790,6 +1099,20 @@ with open(args.manifest, "w", encoding="utf-8") as f:
     json.dump(dict(endpoint=args.endpoint, assets=manifest), f, indent=2, ensure_ascii=False)
 print(f"[V8Plant] asset manifest -> {os.path.abspath(args.manifest)}")
 
+_todo = sum(r.mode == "usd" and "Q" not in ROBOT_CACHE.get(r.cache_key or "", {}) for r in robots)
+print(f"[V8Plant] robot trajectories: {sum(r.mode == 'usd' for r in robots)} SimReady arms, {_todo} to solve"
+      + (" (first run only — a few minutes; cached afterwards)" if _todo else " (cached)"))
+for rb in robots:
+    rb.precompute()
+    if rb.mode == "usd":
+        print(f"  {rb.name:8s} {rb.kind:5s} reach {rb.arm.reach():.2f} m  taught-point error {rb.key_err * 1000:.0f} mm"
+              f"  path deviation {rb.reach_err * 1000:.0f} mm  max joint step {rb.max_step:.0f} deg")
+if _todo:
+    try:
+        with open(ROBOT_CACHE_PATH, "w", encoding="utf-8") as _f:
+            json.dump(ROBOT_CACHE, _f)
+    except OSError as e:
+        print(f"[V8Plant] could not write robot cache: {e}")
 world.reset()
 for rb in robots:
     try:
@@ -814,4 +1137,3 @@ while simulation_app.is_running():
     if args.frames and frame >= args.frames:
         break
 simulation_app.close()
-sys.exit(0)
