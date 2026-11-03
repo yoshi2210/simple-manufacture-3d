@@ -1,0 +1,32 @@
+name: ci
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: pip install pyflakes usd-core
+      - name: lint
+        run: |
+          python -m pyflakes isaac tools
+          node --input-type=module --check < web/main.js
+      - name: smoke test (real OpenUSD, stubbed Isaac runtime)
+        run: python tests/smoke_build.py
+  simready-resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: resolve SimReady folders on Hugging Face (no download)
+        env: { HF_TOKEN: "${{ secrets.HF_TOKEN }}" }
+        run: python tools/fetch_simready.py --list-only | tee simready-resolve.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: simready-resolve, path: simready-resolve.txt }

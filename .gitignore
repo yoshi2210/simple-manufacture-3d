@@ -1,0 +1,7 @@
+assets/
+simready_manifest.json
+*.usd
+*.usda
+!tests/**/*.usda
+__pycache__/
+.cache/

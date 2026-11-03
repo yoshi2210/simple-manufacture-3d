@@ -1,0 +1,11 @@
+Third-party content used at runtime (not redistributed in this repository)
+
+NVIDIA SimReady Assets
+  Source: Hugging Face datasets nvidia/simready-assets (mirror: ml-resources/simready-assets)
+  License: Creative Commons Attribution 4.0 International (CC-BY-4.0)
+  Copyright NVIDIA Corporation. Downloaded on demand by tools/fetch_simready.py into assets/simready/.
+
+NVIDIA Isaac Sim container (nvcr.io/nvidia/isaac-sim)
+  Subject to the NVIDIA Omniverse License Agreement, accepted via ACCEPT_EULA=Y in scripts/run_docker.sh.
+
+three.js (web/), loaded from cdn.jsdelivr.net — MIT License, Copyright 2010-2026 three.js authors.
