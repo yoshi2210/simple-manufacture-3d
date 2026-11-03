@@ -65,22 +65,18 @@ ISAAC_SIM_PATH=~/isaacsim ./scripts/run_local.sh
 | `--no-axis-fix` | Y-up アセットの自動回転を無効にする |
 
 ## SimReady アセットの使い方
-データセット全体は約 480 GB あるため、`tools/fetch_simready.py` はカテゴリごとに 1 フォルダだけを選んでダウンロードします。
-
-| カテゴリ | 優先フォルダ（データセット内で確認済み） | 使う場所 |
-|---|---|---|
-| conveyor | `conveyor_belt_a02` | V8 ラインのコンベアを並べて構成 |
-| car_frame | `carFrame_car_frame_assembled_a01` | 車体ライン（ホワイトボディ） |
-| crate | `crate_blue_a01` | 各ステーションの部品箱 |
-| fence / safety_gate | `barrier_fence_metal_a02` / `barrier_gate_safety_a02` | 安全柵・ゲート |
-| cart / box / bin / compressor | `cart_mobile_a01` ほか | 物流・周辺設備 |
-| pallet / rack / tire / forklift | 名前パターンで自動選択 | 見つかった場合のみ使用 |
+使うアセットは NVIDIA 公式カタログで 1 つずつ確認し、レビュー済みのコミットに固定しています。
+対象はロボット（Comau N-220-27、FANUC CRX ほか）、エンジン部品、車体フレームと外装部品、コンベア、物流機器、安全設備の 45 パッケージです。
+調査結果・SimReady に無いものと代わりの手段・Isaac Sim で動かせるか・改修計画は **[docs/simready-survey.md](docs/simready-survey.md)** にまとめています。
 
 ```bash
-python tools/fetch_simready.py --list-only   # 何が選ばれるかだけ確認する
-python tools/fetch_simready.py --search      # 足りないカテゴリを USD Search でも探す
+python tools/fetch_simready.py --list-only            # 取得するパッケージの一覧
+python tools/fetch_simready.py --groups robots,engine # グループを指定して取得
 ```
 取得したアセットは、単位（cm / m）と上方向の軸（Y-up / Z-up）を自動で補正し、床に接地させて配置します。
+
+> 現時点の `build_v8_factory.py` が実際に使うのは、コンベア・車体フレーム・タイヤ・ラック・通い箱・カート・フェンスなどです。
+> Comau / FANUC のロボットとエンジン部品の組み込みは、改修計画の 1〜2 番目にあたります。
 
 ## GPU がなくてもできる検証
 ```bash

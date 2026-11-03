@@ -148,9 +148,9 @@ SIMREADY_QUERIES = {
     "pallet": "pallet",
     "car_frame": "car body frame",
     "crate": "plastic crate",
-    "cart": "mobile cart",
+    "parts_cart": "mobile parts cart",
     "box": "cardboard box",
-    "compressor": "air compressor",
+    "air_compressor": "air compressor",
     "safety_gate": "safety gate",
 }
 
@@ -662,8 +662,8 @@ veh = assets.simready("vehicle")
 if veh:  # a few SimReady cars parked as display in front of the yard
     for i in range(3):
         reference(f"{ROOT}/Yard/Display_{i}", veh, P(40 + i * 5, 0, 21), yaw=math.pi / 2, fit=4.6)
-DECOR = [("rack", -40, -21, 0, 3.0), ("rack", -30, -21, 0, 3.0), ("bin", -12, -8.5, 0, 0.8), ("table", 10, -8.6, 0, 2.0),
-         ("compressor", XU + 3.5, -2.5, 0, 1.5), ("cart", car_x(10) + 3, 13.5, 0, 1.2), ("cart", car_x(11) + 3, 13.5, 0, 1.2),
+DECOR = [("rack", -40, -21, 0, 3.0), ("rack", -30, -21, 0, 3.0), ("tire_rack", car_x(10) + 1, 14.5, 0, 2.0), ("small_load_carrier", -12, -8.5, 0, 0.6), ("lift_table", 10, -8.6, 0, 1.6),
+         ("air_compressor", XU + 3.5, -2.5, 0, 1.5), ("parts_cart", car_x(10) + 3, 13.5, 0, 1.2), ("parts_cart", car_x(11) + 3, 13.5, 0, 1.2),
          ("safety_gate", V8["x0"] - 6, -15, math.pi / 2, 2.0)]
 DECOR += [("fence", x, V8["zb"] - 3.0, 0, 2.4) for x in range(int(V8["x0"]) - 4, int(V8["x0"] + V8["S"]) + 6, 3)]
 for i, (key, x, zw, yaw, fit) in enumerate(DECOR):

@@ -10,7 +10,7 @@ from pxr import Gf, Usd, UsdGeom
 ROOT = Path(__file__).resolve().parents[1]
 tmp = Path(tempfile.mkdtemp())
 specs = {"conveyor": (300, 80, 60), "car_frame": (450, 140, 180), "crate": (60, 35, 40), "fence": (240, 200, 5),
-         "cart": (100, 90, 60), "box": (60, 40, 40), "compressor": (150, 120, 80), "safety_gate": (200, 120, 5), "tire": (68, 68, 24)}
+         "parts_cart": (100, 90, 60), "box": (60, 40, 40), "air_compressor": (150, 120, 80), "safety_gate": (200, 120, 5), "tire": (68, 68, 24)}
 man = {"assets": {}}
 for k, (x, y, z) in specs.items():
     p = tmp / k / f"{k}.usda"; p.parent.mkdir(parents=True)
@@ -48,7 +48,8 @@ except SystemExit as e:
 cache = UsdGeom.BBoxCache(Usd.TimeCode.Default(), [UsdGeom.Tokens.default_])
 def size(p):
     r = cache.ComputeWorldBound(stage.GetPrimAtPath(p)).ComputeAlignedRange(); return r.GetMin(), r.GetSize()
-checks = {"V8Line/top_0": (3.0, 0.8), "Decor/fence_8": (2.4, 2.0), "CarLine/Car_00/Shell/frame": (4.4, 1.37), "CarLine/Car_00/Wheels/w0": (0.68, 0.68)}
+fence = next(p.GetName() for p in stage.GetPrimAtPath("/World/V8Plant/Decor").GetChildren() if p.GetName().startswith("fence"))
+checks = {"V8Line/top_0": (3.0, 0.8), f"Decor/{fence}": (2.4, 2.0), "CarLine/Car_00/Shell/frame": (4.4, 1.37), "CarLine/Car_00/Wheels/w0": (0.68, 0.68)}
 for rel, (L, H) in checks.items():
     mn, sz = size("/World/V8Plant/" + rel)
     assert abs(max(sz[0], sz[1]) - L) < 0.02 and abs(sz[2] - H) < 0.03, (rel, tuple(sz))
