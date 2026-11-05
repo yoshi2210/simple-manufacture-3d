@@ -561,7 +561,10 @@ def set_parts(parts, vis, cache):
 
 # ------------------------------------------------------------------ V8 line: conveyor + pallets
 _conv = [u for u in (assets.simready(k) for k in ("conveyor", "conveyor_a05", "conveyor_a08", "conveyor_a35", "conveyor_a47", "conveyor_a61")) if u]
-conv_usd = max(_conv, key=lambda u: max(bbox_size_of(u)[0], bbox_size_of(u)[1]) / max(min(bbox_size_of(u)[0], bbox_size_of(u)[1]), 1e-3)) if _conv else None
+for _u in _conv:
+    print(f"[V8Plant] conveyor candidate {os.path.basename(_u)} size {tuple(round(v, 2) for v in bbox_size_of(_u))}")
+_belt = [u for u in _conv if 0.4 <= bbox_size_of(u)[2] <= 1.3] or _conv     # belt-height sections only
+conv_usd = max(_belt, key=lambda u: max(bbox_size_of(u)[0], bbox_size_of(u)[1]) / max(min(bbox_size_of(u)[0], bbox_size_of(u)[1]), 1e-3)) if _belt else None
 if conv_usd:
     print(f"[V8Plant] conveyor section: {conv_usd} size {tuple(round(v, 2) for v in bbox_size_of(conv_usd))}")
 if conv_usd:
@@ -913,12 +916,12 @@ for side in (-1, 1):
 # T30 wheels and T40 glass
 for side in (-1, 1):
     x, cy = car_x(10), lane_y(CL["z"])
-    rack = (x, cy - side * 3.0, 1.3)
+    rack = (x - 2.4, cy - side * 2.0, 1.3)          # beside the robot, not behind it
     wheel = lambda dx: (x + dx, cy - side * 0.98, Y_HANG + 0.7)  # noqa: E731
     robots.append(LineRobot(f"T30_{'L' if side < 0 else 'R'}", (x, cy - side * 2.6, 0), [(rack, wheel(1.4)), (rack, wheel(-1.4))],
                             "heavy", assets.simready("tire"), 0.68))
 robots.append(LineRobot("T40", (car_x(11), lane_y(CL["z"]) - 2.7, 0),
-                        [((car_x(11) + 1.9, lane_y(CL["z"]) - 3.9, 1.35), (car_x(11) + 0.63, lane_y(CL["z"]), Y_HANG + 1.34))], "heavy"))
+                        [((car_x(11) + 2.4, lane_y(CL["z"]) - 2.0, 1.35), (car_x(11) + 0.63, lane_y(CL["z"]), Y_HANG + 1.34))], "heavy"))
 
 # ------------------------------------------------------------------ hot test, transfer belt, car line
 cube(f"{ROOT}/HotTest/Stand", (1.6, 1.3, 0.75), (XU, lane_y(-1.4), 0.4), MAT["dark"])

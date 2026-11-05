@@ -34,6 +34,13 @@ for k, (x, y, z) in specs.items():
     st.Save(); man["assets"][k] = str(p)
 
 # synthetic articulated arms (Y-up, cm, joints like the SimReady robots): heavy ~3.4 m reach, cobot ~1.35 m
+# joint limits copied from the real packages (tests/real_assets_check.py report): Comau N-220-27, FANUC CRX-10iA
+LIMITS = {"robot_heavy": [(-180, 180), (-77, 76), (-167, 74), (-200, 200), (-125, 125), (-200, 200)],
+          # the synthetic cobot's joint layout is not a CRX's, so its CRX limits would not mean anything;
+          # the real CRX-10iA is exercised by the simready-real CI job instead
+          "robot_cobot": [(-175, 175)] * 6}
+
+
 def make_robot(name, k):
     offs = [(0, 0.6, 0), (0.3, 0.4, 0), (0, 1.1, 0), (0.25, 0.2, 0), (1.0, 0, 0), (0.2, 0, 0)]  # Y-up
     axes = ["Y", "Z", "Z", "X", "Z", "X"]
@@ -60,7 +67,8 @@ def make_robot(name, k):
         j = UsdPhysics.RevoluteJoint.Define(st, f"/arm/joints/joint_{i + 1}")
         j.CreateBody0Rel().SetTargets([bodies[i]]); j.CreateBody1Rel().SetTargets([bodies[i + 1]])
         j.CreateAxisAttr(a); j.CreateLocalPos0Attr(Gf.Vec3f(*[v * 100 * k for v in o])); j.CreateLocalPos1Attr(Gf.Vec3f(0, 0, 0))
-        j.CreateLowerLimitAttr(-175); j.CreateUpperLimitAttr(175)
+        lo_, hi_ = LIMITS[name][i]
+        j.CreateLowerLimitAttr(lo_); j.CreateUpperLimitAttr(hi_)
         UsdPhysics.DriveAPI.Apply(j.GetPrim(), "angular").CreateTargetPositionAttr(0.0)
     st.Save(); return str(p)
 man["assets"]["robot_heavy"] = make_robot("robot_heavy", 1.0)
