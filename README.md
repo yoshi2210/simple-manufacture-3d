@@ -36,7 +36,7 @@ python3 -m http.server -d web 8000   # → http://localhost:8000
 ノート PC では動きません。RTX GPU のある Linux マシンかクラウド VM（NVIDIA Brev、AWS g5/g6 など）で実行し、映像はストリーミングで手元の PC から見ます。
 
 ```bash
-git clone <this repo> && cd <this repo>
+git clone https://github.com/yoshi2210/simple-manufacture-3d.git && cd simple-manufacture-3d
 ./scripts/run_docker.sh --livestream    # クラウド GPU（ヘッドレス）→ WebRTC で視聴
 ./scripts/run_docker.sh                 # GPU 付きデスクトップで GUI 表示
 ```
