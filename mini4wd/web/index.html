@@ -1492,6 +1492,7 @@ function setView(v) {
   if (build && (!BUILT[v] || v !== 'cfd')) { build(); BUILT[v] = true; }
   if (st) { renderCard(); }
   for (const l of labels) if (l.view !== v) l.el.style.display = 'none';
+  try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) { }
 }
 tabs.querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.view));
 
@@ -1669,7 +1670,9 @@ addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remov
   const q = new URLSearchParams(location.search);
   if (q.get('t')) SIM.t = +q.get('t');
   if (q.get('cam')) goCam(+q.get('cam'), true);
-  setView(q.get('view') || 'campus');
+  const VIEWS = [...tabs.querySelectorAll('button')].map(b => b.dataset.view), h = location.hash.slice(1);
+  setView(VIEWS.includes(h) ? h : q.get('view') || 'campus');
+  addEventListener('hashchange', () => { const v = location.hash.slice(1); if (VIEWS.includes(v) && v !== VIEW) setView(v); });
 }
 window.__sim = { camera, controls, POOL, TRACK_CARS, SIM, setView, goCam, LBM, CFDUI, COST, selectPart, S, applyExplode, updateCG, pause: v => paused = v, get view() { return VIEW; } };
 event('MFG', `1 直 稼働開始：組立ライン A10–A90・成形 6 台・SMT（${PHASE.id} 量産試作ロット）`);
