@@ -76,20 +76,32 @@ python tools/fetch_simready.py --list-only            # 取得するパッケー
 python tools/fetch_simready.py --groups robots,engine # グループを指定して取得
 ```
 
-## GPU なしでできる検証（CI でも実行）
+## GPU なしでできる検証（GitHub Actions で毎回実行）
+| ジョブ | 内容 |
+|---|---|
+| `checks` | BOM・工程表の整合性、USD から読んだロボット運動学と正解計算の照合、合成アセットでの工場全体の組み立て |
+| `simready-real` | **本物の SimReady パッケージ 50 個**をダウンロードし、全アセットの寸法・軸・物理設定を一覧化。実際の Comau / FANUC / UR の USD で IK を往復検証し、工場全体を実データで組み立てる |
+
+`simready-real` の結果（2026-11-05）:
+- 実データで工場全体の組み立てが最後まで通る（USD プリム 25,285 個）
+- ロボット 22 台（Comau N-220-27 ×14、FANUC CRX-10iA ×8）すべてが、部品を取る・置く位置に 1 mm 以内で到達し、関節の急な反転なし
+- 実アセットはすべて Z-up・メートル単位。物理の有効／無効は variant で切り替え可能（部品は無効、ロボットは PhysX を有効にして配置）
+
+ローカルで実行する場合:
 ```bash
 pip install usd-core numpy
-python tests/test_plant_data.py   # BOM / 工程表の整合性（作業時間がタクトに収まるか など）
-python tests/test_usd_arm.py      # USD から読んだロボット運動学が、正解の計算と一致するか
-python tests/smoke_build.py       # 本物の OpenUSD 上で工場全体を組み立てる（約 4 分）
+python tests/test_plant_data.py   # BOM / 工程表の整合性
+python tests/test_usd_arm.py      # ロボット運動学
+python tests/smoke_build.py       # 工場全体の組み立て（約 3〜4 分）
+python tools/fetch_simready.py && python tests/real_assets_check.py   # 実アセットの検査（要ネット接続）
 ```
-`smoke_build.py` では、SimReady と同じ形式（Y-up・センチメートル単位・UsdPhysics の関節）の合成ロボットで 22 台すべての動作を計算します。全教示点に 1 mm 以内で到達し、関節が急に反転しないこと、2 回目の起動でキャッシュが使われることを確認しています。
 
 ## 制限事項
-- 実際の SimReady のデータと GPU 上の Isaac Sim では、まだ動作を確認していません（この開発環境から Hugging Face にアクセスできず、GPU も無いため）。最初の GPU 実行が実地の確認になります。
+- **GPU 上の Isaac Sim ではまだ動かしていません。** 実データでの組み立てとロボットの動作計算までは確認済みですが、PhysX でのロボット駆動、描画、ライブ配信は、GPU マシンでの初回実行が初めての確認になります。
 - コンベア・パレット・車体の移動は、タクトに同期させたキネマティック制御です（物理的な接触による搬送ではありません）。部品の物理は無効化して配置しています。
 - SimReady の部品は車種ごとに作られたものではないため、寸法を合わせて配置しています。エンジンブロックは SimReady に無いので簡易形状です。
 - SimReady の車体フレームを使った場合、ボディカラーの変化は簡易形状の部品にしか反映されません。
+- 最初に公開したブラウザ版は、ブランチ `snapshot/v0.1.0-web-live` に残しています。
 
 ## ライセンス
 - コード: MIT（`LICENSE`）
