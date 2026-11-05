@@ -39,7 +39,9 @@ jobs:
       - name: build the plant on real assets
         if: always()
         env: { SMOKE_MANIFEST: assets/simready/manifest.json }
-        run: python tests/smoke_build.py 2>&1 | tee smoke-real.log
+        run: |
+          set -o pipefail
+          python tests/smoke_build.py 2>&1 | tee smoke-real.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

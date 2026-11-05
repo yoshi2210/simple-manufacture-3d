@@ -332,55 +332,112 @@ def bbox_size(prim):
     return r.GetSize() if not r.IsEmpty() else Gf.Vec3d(1, 1, 1)
 
 
-def reference(path, usd, pos, yaw=0.0, fit=None, force_fit=False, snap="floor", tilt_x=0.0, long_axis=None, units=False):
+def _op(x, kind, suffix=""):
+    """Add an xform op, matching the precision of an attribute the asset may already author (e.g. double3 scale)."""
+    name = f"xformOp:{kind}" + (f":{suffix}" if suffix else "")
+    attr = x.GetPrim().GetAttribute(name)
+    prec = UsdGeom.XformOp.PrecisionDouble if attr and "double" in str(attr.GetTypeName()) else (
+        UsdGeom.XformOp.PrecisionFloat if attr else None)
+    add = {"translate": x.AddTranslateOp, "rotateX": x.AddRotateXOp, "rotateY": x.AddRotateYOp,
+           "rotateZ": x.AddRotateZOp, "scale": x.AddScaleOp}[kind]
+    if prec is None:
+        return add(opSuffix=suffix) if suffix else add()
+    return add(precision=prec, opSuffix=suffix) if suffix else add(precision=prec)
+
+
+def _v3(op, v):
+    """Set a 3-vector op with the Gf type its attribute expects."""
+    op.Set((Gf.Vec3d if "double" in str(op.GetAttr().GetTypeName()) else Gf.Vec3f)(*v))
+
+
+def reference(path, usd, pos, yaw=0.0, fit=None, force_fit=False, snap="floor", tilt_x=0.0, tilt_y=0.0, long_axis=None,
+              units=False, fit_axis="xy"):
     """Reference a SimReady USD and normalise it.
 
     - Y-up -> Z-up, and (units=True) metersPerUnit -> metres, sanity-checked against the resulting size
     - fit: expected largest horizontal size (m); rescale when off by >2.5x (unit mismatch), or always if force_fit
     - long_axis="x": turn the asset so its longest horizontal side runs along X
-    - tilt_x: degrees about world X (applied after the yaw / alignment)
-    - snap: "floor" centre XY and sit on pos.z | "center" centre XYZ on pos | "base" only sit on pos.z | None
+    - tilt_x / tilt_y: degrees about world X / Y (applied after the yaw / alignment)
+    - fit_axis: which extent `fit` refers to: "xy" largest horizontal, "z" height, "max" largest of all
+    - snap: "floor" centre XY and sit on pos.z | "center" centre XYZ on pos | "top" centre XY, top at pos.z
+            | "base" only sit on pos.z | None
     """
     add_reference_to_stage(usd_path=usd, prim_path=path)
     prim = stage.GetPrimAtPath(path)
     x = UsdGeom.Xformable(prim)
     x.ClearXformOpOrder()
-    t = x.AddTranslateOp()
-    t.Set(Gf.Vec3d(*pos))
+    t = _op(x, "translate")
+    _v3(t, pos)
     if tilt_x:
-        x.AddRotateXOp(opSuffix="tilt").Set(float(tilt_x))
-    rz = x.AddRotateZOp()
+        _op(x, "rotateX", "tilt").Set(float(tilt_x))
+    if tilt_y:
+        _op(x, "rotateY", "tilt").Set(float(tilt_y))
+    rz = _op(x, "rotateZ")
     rz.Set(math.degrees(yaw))
     y_up, mpu = asset_meta(usd)
     if y_up and not args.no_axis_fix:
-        x.AddRotateXOp(opSuffix="upAxis").Set(90.0)
-    sc = x.AddScaleOp()
-    sc.Set(Gf.Vec3f(1, 1, 1))
+        _op(x, "rotateX", "upAxis").Set(90.0)
+    sc = _op(x, "scale")
+    _v3(sc, (1, 1, 1))
     if units and abs(mpu - 1.0) > 1e-6:
-        sc.Set(Gf.Vec3f(mpu, mpu, mpu))
+        _v3(sc, (mpu, mpu, mpu))
         m = max(bbox_size(prim))
         if not (0.3 < m < 8.0):  # the runtime already converted units -> undo
-            sc.Set(Gf.Vec3f(1, 1, 1))
+            _v3(sc, (1, 1, 1))
     if long_axis == "x":
         sz = bbox_size(prim)
         if sz[1] > sz[0] * 1.15:
             rz.Set(math.degrees(yaw) + 90.0)
     if fit:
         size = bbox_size(prim)
-        m = max(size[0], size[1])
+        m = {"xy": max(size[0], size[1]), "z": size[2], "max": max(size)}[fit_axis]
         if m > 1e-6:
             k = fit / m
             if force_fit or not (0.4 < k < 2.5):
                 cur = sc.Get()
-                sc.Set(Gf.Vec3f(cur[0] * k, cur[1] * k, cur[2] * k))
+                _v3(sc, (cur[0] * k, cur[1] * k, cur[2] * k))
     if snap:
         r = world_range(prim)
         if not r.IsEmpty():
             c, lo = r.GetMidpoint(), r.GetMin()
-            dx, dy = (pos[0] - c[0], pos[1] - c[1]) if snap in ("floor", "center") else (0.0, 0.0)
-            dz = pos[2] - (c[2] if snap == "center" else lo[2])
-            t.Set(Gf.Vec3d(pos[0] + dx, pos[1] + dy, pos[2] + dz))
+            dx, dy = (pos[0] - c[0], pos[1] - c[1]) if snap in ("floor", "center", "top") else (0.0, 0.0)
+            dz = pos[2] - {"center": c[2], "top": r.GetMax()[2]}.get(snap, lo[2])
+            _v3(t, (pos[0] + dx, pos[1] + dy, pos[2] + dz))
     return prim
+
+
+def enable_robot_variants(prim):
+    """SimReady robots carry variant sets such as Physics:{None,PhysX} or PhysX:{Disabled,Enabled}, Robot:{None,Robot}.
+    Select the PhysX / robot-schema variants explicitly so the joints and drives are active."""
+    vsets = prim.GetVariantSets()
+    for name in vsets.GetNames():
+        vs, lname = vsets.GetVariantSet(name), name.lower()
+        names = vs.GetVariantNames()
+        pick = None
+        if lname in ("physics", "physx"):
+            pick = next((v for v in names if v.lower() in ("physx", "enabled", "physics")), None)
+        elif lname == "robot":
+            pick = next((v for v in names if v.lower() == "robot"), None)
+        elif lname in ("newton", "mujoco"):
+            pick = next((v for v in names if v.lower() == "disabled"), None)
+        if pick:
+            vs.SetVariantSelection(pick)
+
+
+_size_cache = {}
+
+
+def bbox_size_of(usd):
+    """Native size of an asset (metres, its own up axis), for orientation decisions."""
+    if usd not in _size_cache:
+        try:
+            st = Usd.Stage.Open(usd)
+            root = st.GetDefaultPrim() or next(iter(st.GetPseudoRoot().GetChildren()))
+            r = UsdGeom.BBoxCache(Usd.TimeCode.Default(), [UsdGeom.Tokens.default_, UsdGeom.Tokens.render]).ComputeWorldBound(root).ComputeAlignedRange()
+            _size_cache[usd] = r.GetSize() if not r.IsEmpty() else Gf.Vec3d(1, 1, 1)
+        except Exception:
+            _size_cache[usd] = Gf.Vec3d(1, 1, 1)
+    return _size_cache[usd]
 
 
 def disable_physics(prim):
@@ -393,11 +450,10 @@ def disable_physics(prim):
             for v in vs.GetVariantNames():
                 if v.lower() in ("none", "disabled", "off", "visual", "nophysics", "no_physics"):
                     vs.SetVariantSelection(v)
-                    return True
-    for p in Usd.PrimRange(prim):
+                    break
+    for p in Usd.PrimRange(prim):          # and switch off anything the variant left on
         if p.HasAPI(UsdPhysics.RigidBodyAPI):
             UsdPhysics.RigidBodyAPI(p).CreateRigidBodyEnabledAttr(False)
-    return False
 
 
 def prop(path, usd, pos, **kw):
@@ -447,7 +503,8 @@ def build_engine(path):
     else:
         cyl(f"{path}/Crank/shaft", 0.05 * s, 1.36 * s, (0, 0, 0.3 * s), MAT["steel"], "X")
     if sr("flywheel"):
-        prop(f"{path}/Crank/flywheel", sr("flywheel"), P(-0.66 * s, 0.3 * s, 0), fit=0.48, force_fit=True, snap="center")
+        prop(f"{path}/Crank/flywheel", sr("flywheel"), P(-0.66 * s, 0.3 * s, 0), fit=0.48, force_fit=True, fit_axis="max",
+             tilt_y=90.0, snap="center")   # SimReady flywheel lies flat: stand it up facing the crank axis
     else:
         cyl(f"{path}/Crank/flywheel", 0.3 * s, 0.05 * s, (-0.66 * s, 0, 0.3 * s), MAT["dark"], "X")
     cyl(f"{path}/Crank/pulley", 0.15 * s, 0.08 * s, (0.7 * s, 0, 0.3 * s), MAT["black"], "X")
@@ -456,7 +513,8 @@ def build_engine(path):
         for i in range(4):
             x = (-0.42 + i * 0.28) * s
             if sr("piston"):
-                prop(f"{path}/{ENGINE_PARTS[k]}/p{i}", sr("piston"), P(x, du(side, 0.25), dz(side, 0.25)), fit=0.15, force_fit=True, snap="center")
+                prop(f"{path}/{ENGINE_PARTS[k]}/p{i}", sr("piston"), P(x, du(side, 0.27), dz(side, 0.27)), fit=0.3, force_fit=True,
+                     fit_axis="z", tilt_x=45 * side, snap="top")   # piston + rod: crown at the deck, rod inside the block
             else:
                 cyl(f"{path}/{ENGINE_PARTS[k]}/p{i}", 0.088 * s, 0.05 * s, P(x, du(side, 0.25), dz(side, 0.25)), MAT["steel"])
     # ST50 / ST60 heads + exhaust manifolds
@@ -481,7 +539,8 @@ def build_engine(path):
     for side in (-1, 1):
         bx(f"{path}/Covers/vc{side + 1}", 1.08 * s, 0.1 * s, 0.28 * s, 0, du(side, 0.45), dz(side, 0.45), MAT["red"], rot_x=45 * side)
     if sr("timing_chain"):
-        prop(f"{path}/Covers/timing_chain", sr("timing_chain"), P(0.6 * s, 0.55 * s, 0), fit=0.45, force_fit=True, snap="center")
+        prop(f"{path}/Covers/timing_chain", sr("timing_chain"), P(0.6 * s, 0.55 * s, 0), fit=0.45, force_fit=True, fit_axis="max",
+             tilt_y=90.0, snap="center")
     bx(f"{path}/Covers/timing", 0.06 * s, 0.62 * s, 0.7 * s, 0.64 * s, 0.55 * s, 0, MAT["black"])
     if sr("oil_pan"):
         prop(f"{path}/Covers/oil_pan", sr("oil_pan"), P(0, 0.07 * s, 0), fit=0.9, force_fit=True, long_axis="x", snap="center")
@@ -501,7 +560,10 @@ def set_parts(parts, vis, cache):
 
 
 # ------------------------------------------------------------------ V8 line: conveyor + pallets
-conv_usd = assets.simready("conveyor")
+_conv = [u for u in (assets.simready(k) for k in ("conveyor", "conveyor_a05", "conveyor_a08", "conveyor_a35", "conveyor_a47", "conveyor_a61")) if u]
+conv_usd = max(_conv, key=lambda u: max(bbox_size_of(u)[0], bbox_size_of(u)[1]) / max(min(bbox_size_of(u)[0], bbox_size_of(u)[1]), 1e-3)) if _conv else None
+if conv_usd:
+    print(f"[V8Plant] conveyor section: {conv_usd} size {tuple(round(v, 2) for v in bbox_size_of(conv_usd))}")
 if conv_usd:
     # tile SimReady conveyor sections along both straights
     proto = reference(f"{ROOT}/V8Line/_probe", conv_usd, (0, 0, -50), fit=3.0)
@@ -587,6 +649,7 @@ class LineRobot:
         self.cache_key = None
         if usd:
             reference(self.path, usd, (base[0], base[1], 0.0), snap="base", units=True)
+            enable_robot_variants(stage.GetPrimAtPath(self.path))
             try:
                 self.arm = UsdArm(stage, self.path, tool_length=spec["tool"])
                 self.mode = "usd"
@@ -670,7 +733,7 @@ class LineRobot:
         prim = stage.GetPrimAtPath(self.path)
         t = [op for op in UsdGeom.Xformable(prim).GetOrderedXformOps() if op.GetOpType() == UsdGeom.XformOp.TypeTranslate][0]
         v = t.Get()
-        t.Set(Gf.Vec3d(v[0] + xy[0] - self.base[0], v[1] + xy[1] - self.base[1], v[2] + ped))
+        _v3(t, (v[0] + xy[0] - self.base[0], v[1] + xy[1] - self.base[1], v[2] + ped))
         self.base = np.array([xy[0], xy[1], ped])
         self.arm = UsdArm(stage, self.path, tool_length=tool)                      # re-read at the final pose
         return ped
@@ -924,11 +987,11 @@ def build_car(path):
         for key, dx, w in (("door_front", 0.35, 1.0), ("door_rear", -0.66, 0.98), ("fender_front", 1.58, 1.3)):
             usd = assets.simready(key)
             if usd:
-                prim = prop(f"{path}/Closures/{key}_{n}", usd, P(dx, 0.62, 0.88 * side), fit=w, force_fit=True, long_axis="x")
+                prim = prop(f"{path}/Closures/{key}_{n}", usd, P(dx, 0.32, 0.88 * side), fit=w, force_fit=True, long_axis="x")
                 if side > 0:
                     sc = [op for op in UsdGeom.Xformable(prim).GetOrderedXformOps() if op.GetOpType() == UsdGeom.XformOp.TypeScale][0]
                     v = sc.Get()
-                    sc.Set(Gf.Vec3f(v[0], -v[1], v[2]))
+                    _v3(sc, (v[0], -v[1], v[2]))
             else:
                 bx(f"{path}/Closures/{key}_{n}", w, 0.44, 0.08, dx, 0.84, 0.87 * side, pm)
     hood = assets.simready("hood")
@@ -951,7 +1014,8 @@ def _wheels_and_engine(path):
         if tire:
             prop(f"{path}/Wheels/w{i}", tire, P(wx, 0.0, wz), fit=0.68, force_fit=True)
             if rim:
-                prop(f"{path}/Wheels/r{i}", rim, P(wx, 0.34, wz), fit=0.45, force_fit=True, snap="center")
+                prop(f"{path}/Wheels/r{i}", rim, P(wx, 0.34, wz), fit=0.45, force_fit=True, fit_axis="max", long_axis=None,
+                     yaw=math.pi / 2 if bbox_size_of(rim)[0] < bbox_size_of(rim)[1] else 0.0, snap="center")
         else:
             cyl(f"{path}/Wheels/w{i}", 0.34, 0.24, P(wx, 0.34, wz), MAT["black"], "Y")
     bx(f"{path}/Engine/block", 0.9, 0.7, 0.7, 1.55, 0.45, 0, MAT["alu"])

@@ -52,6 +52,11 @@ PINS = {
     "wheel_rim": ("nvidia/simready-assets", "wheelAssembly_wheel_rim_a01", "653d91e182011f357cf1644013cc94ddf194d349"),
     # --- logistics
     "conveyor": ("nvidia/simready-assets", "conveyor_belt_a02", "653d91e182011f357cf1644013cc94ddf194d349"),
+    "conveyor_a05": ("nvidia/simready-assets", "conveyor_belt_a05", "653d91e182011f357cf1644013cc94ddf194d349"),
+    "conveyor_a08": ("nvidia/simready-assets", "conveyor_belt_a08", "653d91e182011f357cf1644013cc94ddf194d349"),
+    "conveyor_a35": ("nvidia/simready-assets", "conveyor_belt_a35", "653d91e182011f357cf1644013cc94ddf194d349"),
+    "conveyor_a47": ("nvidia/simready-assets", "conveyor_belt_a47", "653d91e182011f357cf1644013cc94ddf194d349"),
+    "conveyor_a61": ("nvidia/simready-assets", "conveyor_belt_a61", "653d91e182011f357cf1644013cc94ddf194d349"),
     "pallet": ("nvidia/simready-assets", "pallet_a01", "653d91e182011f357cf1644013cc94ddf194d349"),
     "rack": ("nvidia/simready-assets", "storageSystem_rack_heavyDuty_d01", "653d91e182011f357cf1644013cc94ddf194d349"),
     "tire_rack": ("nvidia/simready-assets", "storage_tire_rack_a01", "653d91e182011f357cf1644013cc94ddf194d349"),
@@ -107,6 +112,11 @@ GROUPS = {
     ],
     "logistics": [
         "conveyor",
+        "conveyor_a05",
+        "conveyor_a08",
+        "conveyor_a35",
+        "conveyor_a47",
+        "conveyor_a61",
         "pallet",
         "rack",
         "tire_rack",

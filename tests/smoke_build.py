@@ -24,6 +24,11 @@ for k, (x, y, z) in specs.items():
     UsdGeom.SetStageUpAxis(st, UsdGeom.Tokens.y); UsdGeom.SetStageMetersPerUnit(st, 0.01)
     root = UsdGeom.Xform.Define(st, "/Root"); st.SetDefaultPrim(root.GetPrim())
     UsdPhysics.RigidBodyAPI.Apply(root.GetPrim())          # SimReady props carry rigid bodies
+    root.AddScaleOp(precision=UsdGeom.XformOp.PrecisionDouble).Set(Gf.Vec3d(1, 1, 1))   # like the real files
+    vs = root.GetPrim().GetVariantSets().AddVariantSet("PhysX")
+    for v in ("Disabled", "Enabled"):
+        vs.AddVariant(v)
+    vs.SetVariantSelection("Enabled")
     c = UsdGeom.Cube.Define(st, "/Root/Geo"); c.CreateSizeAttr(1.0)
     api = UsdGeom.XformCommonAPI(c); api.SetScale(Gf.Vec3f(x, y, z)); api.SetTranslate(Gf.Vec3d(50, y / 2 + 10, -30))
     st.Save(); man["assets"][k] = str(p)
@@ -36,6 +41,12 @@ def make_robot(name, k):
     st = Usd.Stage.CreateNew(str(p))
     UsdGeom.SetStageUpAxis(st, UsdGeom.Tokens.y); UsdGeom.SetStageMetersPerUnit(st, 0.01)
     root = UsdGeom.Xform.Define(st, "/arm"); st.SetDefaultPrim(root.GetPrim())
+    root.AddTranslateOp(precision=UsdGeom.XformOp.PrecisionDouble).Set(Gf.Vec3d(0, 0, 0))
+    root.AddScaleOp(precision=UsdGeom.XformOp.PrecisionDouble).Set(Gf.Vec3d(1, 1, 1))
+    pv = root.GetPrim().GetVariantSets().AddVariantSet("Physics")
+    for v in ("None", "PhysX"):
+        pv.AddVariant(v)
+    pv.SetVariantSelection("None")
     bodies, pos = ["/arm/base_link"], [0.0, 0.0, 0.0]
     b = UsdGeom.Xform.Define(st, bodies[0]); UsdGeom.Cube.Define(st, bodies[0] + "/g").CreateSizeAttr(40 * k)
     for i, o in enumerate(offs):
@@ -119,6 +130,10 @@ for p in Usd.PrimRange(stage.GetPrimAtPath("/World/V8Plant/Robots/ST30")):
 for part in ["Crank/crankshaft", "PistonsL/p0", "HeadR/head", "Intake/manifold", "Covers/oil_pan"]:
     assert stage.GetPrimAtPath(f"/World/V8Plant/V8Line/Pallet_00/Engine/{part}").IsValid(), part
 assert stage.GetPrimAtPath("/World/V8Plant/CarLine/Car_00/Closures/door_front_R").IsValid()
+if not REAL:
+    assert stage.GetPrimAtPath("/World/V8Plant/V8Line/Crate_0" if False else "/World/V8Plant/CarLine/Car_00/Shell/frame").GetVariantSets().GetVariantSet("PhysX").GetVariantSelection() == "Disabled"
+    assert stage.GetPrimAtPath("/World/V8Plant/Robots/ST30").GetVariantSets().GetVariantSet("Physics").GetVariantSelection() == "PhysX"
+    print("ok  props: physics variant Disabled; robots: Physics=PhysX")
 print("prims:", len(list(stage.Traverse())), "— first build passed")
 
 # second launch: robot placement + trajectories must come from the cache, identically
