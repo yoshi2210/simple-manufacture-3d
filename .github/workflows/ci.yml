@@ -22,15 +22,29 @@ jobs:
         run: python tests/test_plant_data.py
       - name: smoke test (real OpenUSD, stubbed Isaac runtime, synthetic SimReady robots)
         run: python tests/smoke_build.py
-  simready-resolve:
+  simready-real:
+    # downloads the 45 pinned SimReady packages and builds the plant on the REAL assets (usd-core, no GPU)
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
-      - run: pip install -r requirements.txt
-      - name: resolve SimReady folders on Hugging Face (no download)
+      - run: pip install -r requirements.txt usd-core numpy
+      - name: fetch SimReady packages
         env: { HF_TOKEN: "${{ secrets.HF_TOKEN }}" }
-        run: python tools/fetch_simready.py --list-only | tee simready-resolve.txt
+        run: python tools/fetch_simready.py
+      - name: inspect real assets and robots
+        run: python tests/real_assets_check.py
+      - name: build the plant on real assets
+        if: always()
+        env: { SMOKE_MANIFEST: assets/simready/manifest.json }
+        run: python tests/smoke_build.py 2>&1 | tee smoke-real.log
       - uses: actions/upload-artifact@v4
-        with: { name: simready-resolve, path: simready-resolve.txt }
+        if: always()
+        with:
+          name: simready-real
+          path: |
+            simready-real-report.md
+            smoke-real.log
+            assets/simready/manifest.json

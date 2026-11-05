@@ -2,7 +2,7 @@
 with only the Isaac Sim runtime stubbed and fake SimReady-style assets (Y-up, centimetres).
     pip install usd-core && python tests/smoke_build.py
 """
-import json, runpy, sys, tempfile
+import json, os, runpy, sys, tempfile
 import numpy as np
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -54,6 +54,10 @@ def make_robot(name, k):
     st.Save(); return str(p)
 man["assets"]["robot_heavy"] = make_robot("robot_heavy", 1.0)
 man["assets"]["robot_cobot"] = make_robot("robot_cobot", 0.5)
+REAL = os.environ.get("SMOKE_MANIFEST")
+if REAL:
+    man = json.loads(Path(REAL).read_text())
+    print(f"real SimReady manifest: {len(man['assets'])} assets")
 (tmp / "manifest.json").write_text(json.dumps(man))
 
 stage = Usd.Stage.CreateInMemory()
@@ -87,7 +91,7 @@ def size(p):
     r = cache.ComputeWorldBound(stage.GetPrimAtPath(p)).ComputeAlignedRange(); return r.GetMin(), r.GetSize()
 fence = next(p.GetName() for p in stage.GetPrimAtPath("/World/V8Plant/Decor").GetChildren() if p.GetName().startswith("fence"))
 checks = {"V8Line/top_0": (3.0, 0.8), f"Decor/{fence}": (2.4, 2.0), "CarLine/Car_00/Shell/frame": (4.4, 1.37), "CarLine/Car_00/Wheels/w0": (0.68, 0.68)}
-for rel, (L, H) in checks.items():
+for rel, (L, H) in (checks.items() if not REAL else []):
     mn, sz = size("/World/V8Plant/" + rel)
     assert abs(max(sz[0], sz[1]) - L) < 0.02 and abs(sz[2] - H) < 0.03, (rel, tuple(sz))
     print(f"ok  {rel:30s} {sz[0]:.2f} x {sz[1]:.2f} x {sz[2]:.2f} m")
@@ -101,11 +105,16 @@ for r in rb:
     assert r.max_step < 45, (r.name, r.max_step)         # no configuration flips between samples
 print(f"ok  {len(rb)} SimReady-path robots, worst pick/place error {worst.key_err * 1000:.1f} mm ({worst.name}),"
       f" worst joint step {max(r.max_step for r in rb):.0f} deg")
-d = stage.GetPrimAtPath("/World/V8Plant/Robots/ST30/joints/joint_2").GetAttribute("drive:angular:physics:targetPosition").Get()
-assert d is not None and abs(d) > 1e-3, d
+jt = [p for p in Usd.PrimRange(stage.GetPrimAtPath("/World/V8Plant/Robots/ST30")) if p.IsA(UsdPhysics.RevoluteJoint)]
+d = [p.GetAttribute("drive:angular:physics:targetPosition").Get() for p in jt]
+assert any(v is not None and abs(v) > 1e-3 for v in d), d
 # props: rigid bodies disabled; robots: not
-assert stage.GetPrimAtPath("/World/V8Plant/V8Line/top_0").GetAttribute("physics:rigidBodyEnabled").Get() is False
-assert not stage.GetPrimAtPath("/World/V8Plant/Robots/ST30/link_3").GetAttribute("physics:rigidBodyEnabled").Get() is False
+for p in Usd.PrimRange(stage.GetPrimAtPath("/World/V8Plant/V8Line/top_0")):
+    if p.HasAPI(UsdPhysics.RigidBodyAPI):
+        assert p.GetAttribute("physics:rigidBodyEnabled").Get() is False, p.GetPath()
+for p in Usd.PrimRange(stage.GetPrimAtPath("/World/V8Plant/Robots/ST30")):
+    if p.HasAPI(UsdPhysics.RigidBodyAPI):
+        assert p.GetAttribute("physics:rigidBodyEnabled").Get() is not False, p.GetPath()
 # SimReady engine parts inside the stage groups
 for part in ["Crank/crankshaft", "PistonsL/p0", "HeadR/head", "Intake/manifold", "Covers/oil_pan"]:
     assert stage.GetPrimAtPath(f"/World/V8Plant/V8Line/Pallet_00/Engine/{part}").IsValid(), part
