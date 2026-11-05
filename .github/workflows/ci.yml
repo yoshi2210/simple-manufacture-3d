@@ -22,6 +22,13 @@ jobs:
         run: python tests/test_plant_data.py
       - name: smoke test (real OpenUSD, stubbed Isaac runtime, synthetic SimReady robots)
         run: python tests/smoke_build.py
+      - name: mini4wd data checks (regulation, takt, capacity, cost roll-up)
+        run: python mini4wd/tests/test_company_data.py
+      - name: mini4wd build is reproducible and parses
+        run: |
+          python mini4wd/web/build.py
+          node --input-type=module --check < mini4wd/web/main.js
+          git diff --exit-code mini4wd/web/index.html
   simready-real:
     # downloads the 45 pinned SimReady packages and builds the plant on the REAL assets (usd-core, no GPU)
     runs-on: ubuntu-latest

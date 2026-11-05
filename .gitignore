@@ -5,3 +5,4 @@ simready_manifest.json
 !tests/**/*.usda
 __pycache__/
 .cache/
+mini4wd/web/main.js

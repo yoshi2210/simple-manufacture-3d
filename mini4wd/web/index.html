@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>VELO-32 設計開発事務所＆製造ライン — デジタルツイン</title>
+<style>
+:root{--bg:#0e1115;--bg2:#151a21;--panel:rgba(18,22,29,.86);--line:rgba(255,255,255,.09);--txt:#e8ecf1;--mut:#909aa6;--acc:#ff8a3d;--blue:#3987e5;--ok:#3ddc84;--warn:#fab219;--bad:#ff5a52;--srf:#1b2129}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Segoe UI",sans-serif;overflow:hidden;font-size:13px}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.panel{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px}
+button{font:inherit;font-size:12px;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:9px;padding:7px 10px;white-space:nowrap;cursor:pointer}
+button.on{background:var(--acc);color:#111;border-color:transparent;font-weight:700}
+select,input[type=range]{font:inherit;color:var(--txt);background:#222832;border:1px solid var(--line);border-radius:8px;padding:5px}
+/* top bar */
+#top{position:fixed;left:0;right:0;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:8px 10px;background:linear-gradient(#0e1115f2,#0e1115cc);border-bottom:1px solid var(--line)}
+#brand{display:flex;flex-direction:column;line-height:1.15;min-width:max-content}
+#brand b{font-size:13px;letter-spacing:.04em}#brand span{font-size:10px;color:var(--mut)}
+#tabs{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex:1}#tabs::-webkit-scrollbar{display:none}
+.live{display:inline-flex;align-items:center;gap:4px;font-size:10px;background:#d7262e;color:#fff;border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.live i{width:6px;height:6px;border-radius:50%;background:#fff;animation:bl 1.2s infinite}@keyframes bl{50%{opacity:.3}}
+/* campus HUD */
+#hud{position:fixed;left:10px;top:62px;z-index:10;padding:9px 11px;width:292px}
+#hud h3{margin:0 0 6px;font-size:11px;color:var(--mut);letter-spacing:.06em;font-weight:600}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px}.kv span{color:var(--mut);white-space:nowrap}.kv b{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+#ticker{position:fixed;left:10px;bottom:64px;z-index:10;width:min(470px,calc(100vw - 20px));padding:8px 10px;font-size:11.5px;max-height:162px;overflow:hidden}
+#ticker div{display:flex;gap:7px;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ticker i{flex:none;width:7px;height:7px;border-radius:50%;margin-top:4px}
+#ticker em{font-style:normal;color:var(--mut);flex:none;font-variant-numeric:tabular-nums}
+#cams{position:fixed;left:50%;transform:translateX(-50%);bottom:max(10px,env(safe-area-inset-bottom));z-index:10;display:flex;gap:5px;padding:6px;overflow-x:auto;max-width:calc(100vw - 16px);scrollbar-width:none}#cams::-webkit-scrollbar{display:none}
+.label{position:fixed;left:0;top:0;pointer-events:none;font-size:11px;font-weight:600;color:#fff;background:rgba(10,12,16,.74);border:1px solid rgba(255,255,255,.14);padding:2px 7px;border-radius:7px;white-space:nowrap;transform:translate(-50%,-100%);z-index:4}
+.label.dept{pointer-events:auto;cursor:pointer;background:rgba(57,135,229,.85);border:none}
+.label.small{font-size:10px;background:rgba(255,138,61,.88);color:#111;border:none}
+/* design studio */
+#ds{position:fixed;inset:56px 0 0 0;z-index:8;pointer-events:none;display:none}
+#ds.show{display:block}
+#dsL,#dsR{position:absolute;top:8px;bottom:8px;width:300px;pointer-events:auto;overflow:auto;padding:10px}
+#dsL{left:8px}#dsR{right:8px;width:330px}
+#dsBar{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;pointer-events:auto;display:flex;gap:6px;align-items:center;padding:7px 10px;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 680px)}
+.sec{font-size:10.5px;color:var(--mut);letter-spacing:.06em;margin:10px 0 4px;font-weight:600;text-transform:none}
+.bomrow{display:grid;grid-template-columns:1fr auto auto;gap:6px;padding:4px 6px;border-radius:7px;cursor:pointer;align-items:center}
+.bomrow:hover{background:rgba(255,255,255,.05)}.bomrow.sel{background:rgba(255,138,61,.2)}
+.bomrow small{color:var(--mut);font-size:10px;display:block}
+.tag{font-size:9.5px;border-radius:5px;padding:0 5px;line-height:16px;white-space:nowrap}
+.tag.in{background:rgba(57,135,229,.22);color:#8cbcf5}.tag.buy{background:rgba(255,255,255,.08);color:var(--mut)}
+.tag.cc{background:rgba(255,90,82,.2);color:#ff9a93}.tag.sc{background:rgba(250,178,25,.2);color:#ffd27a}
+.card{font-size:12px;line-height:1.55}.card h2{font-size:15px;margin:0 0 2px}.card .pn{color:var(--mut);font-size:11px}
+table{border-collapse:collapse;width:100%;font-size:11.5px}td,th{border-bottom:1px solid var(--line);padding:4px 5px;text-align:left;vertical-align:top}th{color:var(--mut);font-weight:600;font-size:10.5px;white-space:nowrap;position:sticky;top:0;background:var(--srf)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.chk{display:grid;grid-template-columns:1fr auto auto;gap:4px 8px;font-size:12px}.chk em{font-style:normal;font-variant-numeric:tabular-nums;color:var(--mut)}
+.ok{color:var(--ok)}.ng{color:var(--bad)}.wa{color:var(--warn)}
+.st{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;border-radius:6px;padding:1px 6px;white-space:nowrap}
+.st.s-ok{background:rgba(61,220,132,.16);color:#7ee8ac}.st.s-run{background:rgba(57,135,229,.2);color:#8cbcf5}.st.s-warn{background:rgba(250,178,25,.18);color:#ffd27a}.st.s-bad{background:rgba(255,90,82,.2);color:#ff9a93}.st.s-none{background:rgba(255,255,255,.07);color:var(--mut)}
+/* full pages */
+.page{position:fixed;inset:56px 0 0 0;z-index:15;overflow:auto;background:var(--bg);display:none;padding:16px 18px 60px}
+.page.show{display:block}
+.page h1{font-size:18px;margin:4px 0 2px}.page .lead{color:var(--mut);margin:0 0 14px;max-width:980px;line-height:1.6}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.box{background:var(--srf);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+.box h2{font-size:13px;margin:0 0 8px;display:flex;align-items:center;gap:8px}.box h2 small{color:var(--mut);font-weight:500;font-size:11px}
+.wide{grid-column:1/-1}.scroll{overflow:auto;max-height:520px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:var(--srf);border:1px solid var(--line);border-radius:12px;padding:10px 12px}.kpi span{color:var(--mut);font-size:11px}.kpi b{display:block;font-size:22px;font-variant-numeric:tabular-nums;margin-top:2px}.kpi em{font-style:normal;font-size:11px;color:var(--mut)}
+svg text{font-family:inherit}
+#cfdWrap{display:grid;grid-template-columns:1fr 330px;gap:12px}
+#cfdCanvas{width:100%;image-rendering:pixelated;border-radius:10px;background:#0b0d10;display:block}
+#load{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:var(--bg);color:var(--mut)}#load b{color:var(--txt)}
+.disc{font-size:10.5px;color:var(--mut);line-height:1.5}
+.vs{display:flex;gap:6px;align-items:stretch;overflow-x:auto;padding-bottom:4px}
+.vs .step{flex:none;width:132px;background:#20262f;border:1px solid var(--line);border-radius:9px;padding:6px 8px;font-size:11px;position:relative}
+.vs .step b{display:block;font-size:11.5px;margin-bottom:2px}.vs .step small{color:var(--mut);display:block}
+.vs .step .wip{position:absolute;right:6px;top:5px;font-size:10px;color:var(--acc);font-variant-numeric:tabular-nums}
+.dept{background:#20262f;border:1px solid var(--line);border-radius:10px;padding:9px 11px}.dept h3{margin:0 0 3px;font-size:13px;display:flex;justify-content:space-between}.dept h3 span{color:var(--mut);font-weight:500;font-size:11px}
+.dept p{margin:0 0 5px;color:var(--mut);font-size:11px}
+#deptModal{position:fixed;z-index:30;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:80vh;overflow:auto;padding:14px 16px;display:none}#deptModal.show{display:block}
+@media (max-width:820px){
+  #hud{width:auto;right:10px;top:58px;padding:7px 9px}#hud .opt{display:none}
+  #ticker{bottom:60px;max-height:84px;font-size:10.5px}
+  #ds{inset:56px 0 0 0}#dsL{display:none}#dsR{top:auto;bottom:0;left:0;right:0;width:auto;height:44vh;border-radius:12px 12px 0 0}
+  #dsBar{top:6px;bottom:auto;max-width:calc(100vw - 16px)}
+  #cfdWrap{grid-template-columns:1fr}
+  .page{padding:12px 10px 60px}
+}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="load"><b>VELO WORKS キャンパスを起動中…</b><span id="loadmsg">事務所と工場を配置しています</span></div>
+<div id="top">
+  <div id="brand"><b>VELO WORKS<span class="live"><i></i>LIVE</span></b><span>VELO-32 KESTREL 設計開発・製造</span></div>
+  <div id="tabs">
+    <button data-view="campus" class="on">🏢 キャンパス</button>
+    <button data-view="studio">🎨 デザインスタジオ</button>
+    <button data-view="cfd">🌬 空力 CFD</button>
+    <button data-view="process">📐 開発プロセス</button>
+    <button data-view="quality">✅ 品質</button>
+    <button data-view="scm">📦 SCM・MRP</button>
+    <button data-view="cost">💴 原価</button>
+    <button data-view="office">🏛 バックオフィス</button>
+  </div>
+</div>
+
+<div id="hud" class="panel">
+  <h3>本日の稼働（デモ再生 ×<span id="hScale">4</span>）</h3>
+  <div class="kv">
+    <span>組立ライン タクト</span><b id="hTakt">24 s</b>
+    <span>完成（今回）</span><b id="hDone">0</b>
+    <span class="opt">EOL 直行率</span><b class="opt" id="hFpy">—</b>
+    <span class="opt">OEE（組立）</span><b class="opt" id="hOee">—</b>
+    <span class="opt">完成品在庫</span><b class="opt" id="hFg">—</b>
+    <span class="opt">受注残</span><b class="opt" id="hBl">—</b>
+    <span>開発</span><b id="hPhase">—</b>
+  </div>
+</div>
+<div id="ticker" class="panel"></div>
+<div id="cams" class="panel"></div>
+<div id="deptModal" class="panel"></div>
+
+<div id="ds">
+  <div id="dsL" class="panel"></div>
+  <div id="dsR" class="panel"></div>
+  <div id="dsBar" class="panel">
+    <select id="dsVariant"></select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap">分解 <input id="dsExplode" type="range" min="0" max="100" value="0" style="width:140px"></label>
+    <button id="dsEnv" class="on">規則エンベロープ</button>
+    <button id="dsCg">重心</button>
+    <button id="dsBat">電池（別売）</button>
+    <button id="dsSpin">⟳ 回転</button>
+  </div>
+</div>
+
+<section class="page" id="pg-cfd"></section>
+<section class="page" id="pg-process"></section>
+<section class="page" id="pg-quality"></section>
+<section class="page" id="pg-scm"></section>
+<section class="page" id="pg-cost"></section>
+<section class="page" id="pg-office"></section>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+window.addEventListener('error', e => { const m = document.getElementById('loadmsg'); if (m) m.textContent = 'エラー: ' + e.message; });
+
+// ============================================================ data
+const D = {"meta": {"company": "VELO WORKS（架空）", "company_en": "VELO WORKS (fictional)", "product": "VELO-32 KESTREL", "chassis": "VX-1", "category": "1/32 4WD レーサー（ミニ四駆タイプ）", "disclaimer": "架空ブランドのオリジナル設計によるデモです。「ミニ四駆」は株式会社タミヤの登録商標で、本デモはタミヤとは無関係です。タミヤ公認競技会規則では自作シャーシ・自作ボディ、タミヤ製以外のモーター・電池は認められないため、本製品は公認レースの対象外です（コース互換のため寸法・重量は規則の枠内で設計）。数値はすべてデモ用の代表値です。", "currency": "JPY", "program_weeks": 52, "now_week": 40, "takt_s": 24, "shift_h": 7.5, "days_per_week": 5, "demo_time_scale": 4}, "regulation": {"source": "タミヤ ミニ四駆公認競技会規則（2026年版）の車体寸法・重量", "url": "https://tamiya.com/japan/mini4wd/regulation.html", "length_max": 165, "width_max": 105, "height_max": 70, "ground_min": 1.0, "tire_dia": [22, 35], "tire_width": [8, 26], "weight_min_g": 90}, "design": {"length": 158.0, "width_body": 90.0, "width_rollers": 103.0, "height": 43.5, "wheelbase": 82.0, "track": 80.0, "tire_dia": 26.0, "tire_width": 10.0, "ground": 1.6, "roller_dia": 13.0, "battery": "単3形 ×2（別売）", "battery_mass_g": 23.0, "battery_count": 2}, "motors": [{"id": "M130-STD", "name": "130サイズ DCモーター スタンダード", "no_load_rpm": 12500, "stall_mNm": 1.9, "no_load_A": 0.35, "stall_A": 3.6, "mass_g": 17.5, "cost": 110, "supplier": "SUP-01"}, {"id": "M130-HRV", "name": "130サイズ DCモーター ハイレブ", "no_load_rpm": 17500, "stall_mNm": 1.7, "no_load_A": 0.55, "stall_A": 4.4, "mass_g": 17.5, "cost": 165, "supplier": "SUP-01"}, {"id": "M130-TRQ", "name": "130サイズ DCモーター トルク", "no_load_rpm": 13800, "stall_mNm": 2.6, "no_load_A": 0.45, "stall_A": 5.2, "mass_g": 18.0, "cost": 165, "supplier": "SUP-01"}], "gears": [{"id": "G50", "ratio": 5.0, "name": "5:1（加速重視）", "stack": "ピニオン8T → カウンター20T/12T → スパー/クラウン"}, {"id": "G42", "ratio": 4.2, "name": "4.2:1（バランス）", "stack": "ピニオン8T → カウンター17T/12T → スパー/クラウン"}, {"id": "G37", "ratio": 3.7, "name": "3.7:1（最高速重視）", "stack": "ピニオン9T → カウンター17T/12T → スパー/クラウン"}], "bodies": [{"id": "STD", "pn": "VW-BDY-110", "name": "KESTREL スタンダード", "profile": "std", "wing": false}, {"id": "AERO", "pn": "VW-BDY-111", "name": "KESTREL エアロ（ウィング付）", "profile": "std", "wing": true}, {"id": "LOW", "pn": "VW-BDY-112", "name": "KESTREL ロードラッグ", "profile": "low", "wing": false}], "variants": [{"id": "KST-STD", "name": "KESTREL STD", "body": "STD", "motor": "M130-STD", "gear": "G42", "color": "#d23b2f", "msrp": 4980}, {"id": "KST-AERO", "name": "KESTREL AERO", "body": "AERO", "motor": "M130-TRQ", "gear": "G42", "color": "#1f5fbf", "msrp": 5480}, {"id": "KST-LOW", "name": "KESTREL LOW-DRAG", "body": "LOW", "motor": "M130-HRV", "gear": "G37", "color": "#e8b10e", "msrp": 5480}], "parts": [{"pn": "VW-CHS-100", "name": "シャーシ VX-1", "en": "Chassis VX-1", "qty": 1, "make_buy": "内製", "material": "PC/ABS（耐衝撃）", "process": "射出成形", "weight_g": 18.0, "unit_cost": null, "mold": "MD-100", "machine": "M01", "cavities": 2, "cycle_s": 32, "resin_yen_kg": 620, "runner_ratio": 0.14, "mold_cost": 6800000, "mold_life_shots": 300000, "cc": [{"char": "車軸受け穴径", "spec": "φ6.00", "tol": "+0.03/0", "cls": "CC"}, {"char": "ホイールベース（軸間距離）", "spec": "82.00", "tol": "±0.05", "cls": "CC"}, {"char": "モーター室幅", "spec": "20.40", "tol": "±0.05", "cls": "SC"}], "group": "chassis", "station": "A10"}, {"pn": "VW-TRM-101", "name": "電池端子セット（前・後）", "en": "Battery terminal set", "qty": 1, "make_buy": "購入", "material": "SUS301-CSP", "process": "プレス", "weight_g": 0.8, "unit_cost": 8, "supplier": "SUP-05", "lead_w": 3, "group": "chassis", "station": "A10"}, {"pn": "VW-SW-102", "name": "電源スイッチ", "en": "Power switch", "qty": 1, "make_buy": "購入", "material": "POM＋りん青銅", "process": "成形＋プレス", "weight_g": 0.9, "unit_cost": 12, "supplier": "SUP-05", "lead_w": 3, "group": "chassis", "station": "A10"}, {"pn": "VW-BRG-171", "name": "ボールベアリング 1150（車軸用）", "en": "Ball bearing 1150", "qty": 4, "make_buy": "購入", "material": "SUJ2", "process": "購入品", "weight_g": 0.5, "unit_cost": 12, "supplier": "SUP-02", "lead_w": 6, "group": "drive", "station": "A20"}, {"pn": "VW-SFT-170", "name": "車軸 φ2×60", "en": "Axle φ2×60", "qty": 2, "make_buy": "購入", "material": "SUS420J2 焼入れ", "process": "センタレス研削", "weight_g": 1.5, "unit_cost": 9, "supplier": "SUP-03", "lead_w": 4, "cc": [{"char": "軸径", "spec": "φ2.000", "tol": "0/−0.005", "cls": "CC"}], "group": "drive", "station": "A20"}, {"pn": "VW-PRP-172", "name": "プロペラシャフト", "en": "Propeller shaft", "qty": 1, "make_buy": "購入", "material": "SUS304＋POMジョイント", "process": "購入品", "weight_g": 1.2, "unit_cost": 10, "supplier": "SUP-03", "lead_w": 4, "group": "drive", "station": "A20"}, {"pn": "VW-GER-161", "name": "カウンターギヤ", "en": "Counter gear", "qty": 1, "make_buy": "内製", "material": "POM（摺動グレード）", "process": "射出成形（ファミリー金型）", "weight_g": 1.1, "unit_cost": null, "mold": "MD-160", "machine": "M05", "cavities": 4, "cycle_s": 22, "resin_yen_kg": 480, "runner_ratio": 0.35, "mold_cost": 5200000, "mold_life_shots": 500000, "cc": [{"char": "歯形（OBD）", "spec": "JIS N8 相当", "tol": "—", "cls": "SC"}], "group": "drive", "station": "A20"}, {"pn": "VW-GER-162", "name": "クラウンギヤ", "en": "Crown gear", "qty": 1, "make_buy": "内製", "material": "POM（摺動グレード）", "process": "射出成形（ファミリー金型）", "weight_g": 0.9, "unit_cost": null, "mold": "MD-160", "machine": "M05", "cavities": 4, "cycle_s": 22, "resin_yen_kg": 480, "runner_ratio": 0.35, "mold_cost": 0, "mold_life_shots": 500000, "group": "drive", "station": "A20"}, {"pn": "VW-GER-163", "name": "スパーギヤ（前後）", "en": "Spur gear F/R", "qty": 2, "make_buy": "内製", "material": "POM（摺動グレード）", "process": "射出成形（ファミリー金型）", "weight_g": 1.3, "unit_cost": null, "mold": "MD-160", "machine": "M05", "cavities": 8, "cycle_s": 22, "resin_yen_kg": 480, "runner_ratio": 0.35, "mold_cost": 0, "mold_life_shots": 500000, "group": "drive", "station": "A20"}, {"pn": "VW-PCB-190", "name": "制御基板 ASSY「VX-Link」", "en": "Control board assy VX-Link", "qty": 1, "make_buy": "内製", "material": "FR-4 0.8t 2層", "process": "SMT（社内ライン）", "weight_g": 3.4, "unit_cost": null, "smt": true, "cc": [{"char": "ソフトスタート立上り時間", "spec": "120 ms", "tol": "±10 ms", "cls": "SC"}, {"char": "待機電流", "spec": "≤ 25 µA", "tol": "—", "cls": "SC"}], "group": "electronics", "station": "A30"}, {"pn": "VW-MAG-191", "name": "回転検出用磁石 φ2×1", "en": "Sensor magnet", "qty": 1, "make_buy": "購入", "material": "ネオジム N35 Niめっき", "process": "購入品", "weight_g": 0.03, "unit_cost": 5, "supplier": "SUP-06", "lead_w": 5, "group": "electronics", "station": "A30"}, {"pn": "VW-MTR-180", "name": "モーター（130サイズ・購入品）", "en": "Motor 130-size (purchased)", "qty": 1, "make_buy": "購入", "material": "—", "process": "購入品＋ピニオン圧入（サブ組立）", "weight_g": 17.5, "unit_cost": 110, "supplier": "SUP-01", "lead_w": 4, "cc": [{"char": "無負荷回転数（受入）", "spec": "12,500 rpm", "tol": "±8%", "cls": "SC"}], "group": "motor", "station": "A40"}, {"pn": "VW-PIN-181", "name": "ピニオンギヤ 8T", "en": "Pinion 8T", "qty": 1, "make_buy": "購入", "material": "黄銅 C3604", "process": "切削", "weight_g": 0.3, "unit_cost": 6, "supplier": "SUP-03", "lead_w": 4, "group": "motor", "station": "A40"}, {"pn": "VW-WHL-120", "name": "ホイール 26mm 用", "en": "Wheel", "qty": 4, "make_buy": "内製", "material": "POM", "process": "射出成形", "weight_g": 1.4, "unit_cost": null, "mold": "MD-120", "machine": "M03", "cavities": 8, "cycle_s": 18, "resin_yen_kg": 480, "runner_ratio": 0.25, "mold_cost": 3600000, "mold_life_shots": 800000, "cc": [{"char": "軸穴径（圧入）", "spec": "φ1.95", "tol": "±0.01", "cls": "CC"}, {"char": "振れ", "spec": "≤ 0.05", "tol": "—", "cls": "SC"}], "group": "wheels", "station": "A50"}, {"pn": "VW-TIR-130", "name": "タイヤ 26mm（ローハイト）", "en": "Tire 26 mm", "qty": 4, "make_buy": "内製", "material": "TPE（ショアA60）", "process": "射出成形", "weight_g": 2.1, "unit_cost": null, "mold": "MD-130", "machine": "M04", "cavities": 8, "cycle_s": 26, "resin_yen_kg": 900, "runner_ratio": 0.2, "mold_cost": 3200000, "mold_life_shots": 600000, "cc": [{"char": "外径", "spec": "φ26.00", "tol": "±0.10", "cls": "CC"}, {"char": "硬度", "spec": "A60", "tol": "±3", "cls": "SC"}], "group": "wheels", "station": "A50"}, {"pn": "VW-STF-150", "name": "フロントローラーステー", "en": "Front roller stay", "qty": 1, "make_buy": "内製", "material": "GFRP 1.5t", "process": "CNCルーター加工", "weight_g": 3.2, "unit_cost": null, "machine_rate": 4200, "cycle_s": 40, "sheet_yen": 14, "group": "rollers", "station": "A60"}, {"pn": "VW-STR-151", "name": "リヤローラーステー", "en": "Rear roller stay", "qty": 1, "make_buy": "内製", "material": "GFRP 1.5t", "process": "CNCルーター加工", "weight_g": 3.6, "unit_cost": null, "machine_rate": 4200, "cycle_s": 44, "sheet_yen": 16, "group": "rollers", "station": "A60"}, {"pn": "VW-ROL-140", "name": "ローラー 13mm", "en": "Roller 13 mm", "qty": 4, "make_buy": "内製", "material": "POM", "process": "射出成形", "weight_g": 1.0, "unit_cost": null, "mold": "MD-140", "machine": "M06", "cavities": 16, "cycle_s": 20, "resin_yen_kg": 480, "runner_ratio": 0.3, "mold_cost": 2800000, "mold_life_shots": 1000000, "group": "rollers", "station": "A60"}, {"pn": "VW-BRG-141", "name": "ボールベアリング 850（ローラー用）", "en": "Ball bearing 850", "qty": 4, "make_buy": "購入", "material": "SUJ2", "process": "購入品", "weight_g": 0.4, "unit_cost": 12, "supplier": "SUP-02", "lead_w": 6, "group": "rollers", "station": "A60"}, {"pn": "VW-SCR-195", "name": "ねじ・ナット類（M2）", "en": "Screws & nuts M2", "qty": 1, "make_buy": "購入", "material": "SWCH 三価クロメート", "process": "購入品", "weight_g": 4.6, "unit_cost": 14, "supplier": "SUP-03", "lead_w": 2, "cc": [{"char": "締付トルク（ステー）", "spec": "0.18 N·m", "tol": "±0.02", "cls": "SC"}], "group": "rollers", "station": "A60"}, {"pn": "VW-BDY-110", "name": "ボディ KESTREL", "en": "Body KESTREL", "qty": 1, "make_buy": "内製", "material": "ABS（原着）", "process": "射出成形", "weight_g": 11.5, "unit_cost": null, "mold": "MD-110", "machine": "M02", "cavities": 2, "cycle_s": 28, "resin_yen_kg": 380, "runner_ratio": 0.18, "mold_cost": 5600000, "mold_life_shots": 300000, "cc": [{"char": "肉厚", "spec": "1.00", "tol": "±0.05", "cls": "SC"}, {"char": "外観（ヒケ・ウェルド）", "spec": "限度見本", "tol": "—", "cls": "SC"}], "group": "body", "station": "A70"}, {"pn": "VW-DCL-196", "name": "ステッカー", "en": "Decal sheet", "qty": 1, "make_buy": "購入", "material": "PVC 0.08t", "process": "オフセット印刷", "weight_g": 0.5, "unit_cost": 18, "supplier": "SUP-07", "lead_w": 3, "group": "body", "station": "A70"}, {"pn": "VW-PKG-200", "name": "パッケージ一式（化粧箱・トレイ・取説・シュリンク）", "en": "Packaging set", "qty": 1, "make_buy": "購入", "material": "コートボール・PET", "process": "印刷・真空成形", "weight_g": 48.0, "unit_cost": 95, "supplier": "SUP-07", "lead_w": 3, "group": "package", "station": "A90", "ship_only": true}], "pcb_bom": [{"ref": "U1", "part": "BLE SoC（Cortex-M4F・技適取得モジュール相当）", "pkg": "QFN48", "qty": 1, "cost": 160, "lead_w": 12}, {"ref": "U2", "part": "6軸 IMU", "pkg": "LGA14", "qty": 1, "cost": 85, "lead_w": 10}, {"ref": "U3", "part": "ホールセンサ（回転検出）", "pkg": "SOT23", "qty": 1, "cost": 12, "lead_w": 8}, {"ref": "Q1", "part": "Nch MOSFET 20V/30A（モーター駆動・ソフトスタート）", "pkg": "DFN3x3", "qty": 1, "cost": 18, "lead_w": 8}, {"ref": "U4", "part": "昇降圧 DC-DC 3.3V", "pkg": "WLCSP", "qty": 1, "cost": 42, "lead_w": 10}, {"ref": "L1", "part": "インダクタ 1µH", "pkg": "2016", "qty": 1, "cost": 6, "lead_w": 6}, {"ref": "ANT1", "part": "2.4GHz チップアンテナ", "pkg": "3216", "qty": 1, "cost": 14, "lead_w": 8}, {"ref": "D1", "part": "TVS（逆接・サージ保護）", "pkg": "SOD323", "qty": 1, "cost": 4, "lead_w": 6}, {"ref": "LED1", "part": "RGB LED（状態表示）", "pkg": "0606", "qty": 1, "cost": 6, "lead_w": 6}, {"ref": "C1–C14", "part": "積層セラミックコンデンサ", "pkg": "0402", "qty": 14, "cost": 0.6, "lead_w": 6}, {"ref": "R1–R9", "part": "チップ抵抗", "pkg": "0402", "qty": 9, "cost": 0.3, "lead_w": 4}, {"ref": "J1", "part": "モーター・電池接続パッド", "pkg": "—", "qty": 1, "cost": 3, "lead_w": 4}, {"ref": "PCB", "part": "生基板 32×14mm FR-4 0.8t 2層（8面付け）", "pkg": "—", "qty": 1, "cost": 28, "lead_w": 4}], "firmware": {"id": "FW-VX-LINK", "version": "1.3.0", "features": ["ソフトスタート（120 ms ランプ、突入電流抑制）", "過電流保護（6.0 A・200 µs）", "電池電圧監視・ローバッテリー表示", "テレメトリ 200 Hz（IMU・車輪回転・電流）を BLE でアプリへ", "コースレイアウト自動推定（IMU＋車輪回転）", "OTA 更新（署名付き）"], "aspice_target": "Automotive SPICE 相当の V字プロセスを社内適用（CL2 目標）"}, "molding": [{"id": "M01", "tonnage": 100, "mold": "MD-100", "parts": ["VW-CHS-100"], "color": "#3a3f46"}, {"id": "M02", "tonnage": 100, "mold": "MD-110", "parts": ["VW-BDY-110"], "color": "#d23b2f"}, {"id": "M03", "tonnage": 60, "mold": "MD-120", "parts": ["VW-WHL-120"], "color": "#e8e8e8"}, {"id": "M04", "tonnage": 60, "mold": "MD-130", "parts": ["VW-TIR-130"], "color": "#1c1d20"}, {"id": "M05", "tonnage": 60, "mold": "MD-160", "parts": ["VW-GER-161", "VW-GER-162", "VW-GER-163"], "color": "#f2f0e8"}, {"id": "M06", "tonnage": 60, "mold": "MD-140", "parts": ["VW-ROL-140"], "color": "#f2f0e8"}], "molding_rate_yen_h": {"60": 2100, "100": 2600}, "smt": {"panel_up": 8, "panel_cycle_s": 45, "line_rate_yen_h": 18000, "steps": [{"id": "S10", "name": "はんだ印刷"}, {"id": "S20", "name": "SPI（はんだ検査）"}, {"id": "S30", "name": "高速マウンター"}, {"id": "S40", "name": "異形マウンター"}, {"id": "S50", "name": "リフロー（窒素）"}, {"id": "S60", "name": "AOI（外観検査）"}, {"id": "S70", "name": "分割・FW書込・機能検査"}]}, "assembly": {"line_rate_yen_h": 4200, "operator_rate_yen_h": 3200, "operators": 3, "stations": [{"id": "A10", "name": "シャーシ投入・端子・スイッチ", "resource": "SCARA ロボット＋ビジョン", "ops": [{"d": "シャーシ供給・位置決め", "t": 6.2}, {"d": "電池端子圧入（荷重監視）", "t": 7.4}, {"d": "スイッチ組付", "t": 5.1}]}, {"id": "A20", "name": "駆動系（軸受・車軸・ギヤ）", "resource": "SCARA ロボット×2", "ops": [{"d": "軸受 ×4 圧入", "t": 6.8}, {"d": "車軸・スパーギヤ・クラウン", "t": 7.9}, {"d": "カウンター・プロペラシャフト", "t": 5.4}]}, {"id": "A30", "name": "制御基板・磁石", "resource": "SCARA ロボット＋はんだ付けロボット", "ops": [{"d": "基板装着", "t": 5.6}, {"d": "端子はんだ付け（温度監視）", "t": 9.8}, {"d": "磁石圧入（スパーギヤ）", "t": 3.2}]}, {"id": "A40", "name": "モーター組付", "resource": "SCARA ロボット", "ops": [{"d": "モーター（ピニオン圧入済）装着", "t": 6.4}, {"d": "バックラッシ確認（トルク波形）", "t": 8.6}]}, {"id": "A50", "name": "ホイール・タイヤ圧入", "resource": "サーボプレス×4", "ops": [{"d": "ホイール＋タイヤ サブ組立品 ×4 圧入", "t": 12.2}, {"d": "振れ測定", "t": 5.8}]}, {"id": "A60", "name": "ローラーステー・ローラー", "resource": "ねじ締めロボット（トルク管理）", "ops": [{"d": "ステー前後 締結（M2 ×6）", "t": 11.6}, {"d": "ローラー ×4（ベアリング入り）締結", "t": 7.8}]}, {"id": "A70", "name": "ボディ・ステッカー", "resource": "作業者", "ops": [{"d": "ボディ装着・クリップ", "t": 8.4}, {"d": "ステッカー貼付（治具）", "t": 10.2}]}, {"id": "A80", "name": "EOL 検査", "resource": "ローラーダイナモ試験機", "ops": [{"d": "回転・電流・ソフトスタート", "t": 9.5}, {"d": "BLE 接続・IMU 校正", "t": 8.0}, {"d": "トレーサビリティ記録（シリアル）", "t": 1.5}]}, {"id": "A90", "name": "梱包", "resource": "作業者＋シュリンク機", "ops": [{"d": "トレイ・取説・箱詰め", "t": 11.0}, {"d": "シュリンク・ラベル", "t": 6.0}]}]}, "installs": {"A10": ["VW-CHS-100", "VW-TRM-101", "VW-SW-102"], "A20": ["VW-BRG-171", "VW-SFT-170", "VW-PRP-172", "VW-GER-161", "VW-GER-162", "VW-GER-163"], "A30": ["VW-PCB-190", "VW-MAG-191"], "A40": ["VW-MTR-180", "VW-PIN-181"], "A50": ["VW-WHL-120", "VW-TIR-130"], "A60": ["VW-STF-150", "VW-STR-151", "VW-ROL-140", "VW-BRG-141", "VW-SCR-195"], "A70": ["VW-BDY-110", "VW-DCL-196"], "A80": [], "A90": ["VW-PKG-200"]}, "cost_model": {"overhead_rate": 0.18, "logistics_per_unit": 35, "warranty_per_unit": 20, "target_cost": 1350, "channel_margin": 0.4, "tax_rate": 0.1, "smt_process_per_board": null}, "apqp": [{"id": "P0", "name": "企画", "start": 1, "end": 6, "gate": {"id": "G0", "name": "企画承認", "week": 6, "criteria": ["市場・競合分析（コース互換性含む）", "事業性（販売計画・目標原価 ¥1,350）", "知財調査（商標・意匠・特許）", "規則エンベロープの設計制約化"]}}, {"id": "P1", "name": "計画・定義", "start": 4, "end": 9, "gate": {"id": "G1", "name": "開発着手", "week": 9, "criteria": ["製品要求仕様書 PRD v1.0", "設計目標（重量 ≤110 g 電池別、最高速、待機電流）", "暫定 BOM・目標原価配分", "特殊特性（CC/SC）初期リスト", "日程・体制・予算承認"]}}, {"id": "P2", "name": "製品設計・開発", "start": 9, "end": 24, "gate": {"id": "G2", "name": "設計凍結", "week": 24, "criteria": ["DR1〜DR3 完了", "DFMEA（AP=H の処置完了）", "試作 PT1/PT2 評価", "空力 CFD・走行試験", "図面・3D データ リリース（PLM）"]}}, {"id": "P3", "name": "工程設計・開発", "start": 20, "end": 34, "gate": {"id": "G3", "name": "量産準備承認", "week": 34, "criteria": ["工程フロー・PFMEA", "金型 T1 トライ・寸法測定", "管理計画（量産試作版）", "設備仕様・ライン配置", "MSA 計画"]}}, {"id": "P4", "name": "製品・工程の妥当性確認", "start": 32, "end": 44, "gate": {"id": "G4", "name": "量産移行承認", "week": 44, "criteria": ["量産試作 PP（Run@Rate 300 台）", "PPAP 18 要素 提出・承認", "初期工程能力 Cpk ≥ 1.67（CC）/ 1.33（SC）", "玩具安全・電波法・EMC 適合", "包装・輸送試験"]}}, {"id": "P5", "name": "量産・フィードバック", "start": 44, "end": 52, "gate": {"id": "G5", "name": "初期流動解除", "week": 52, "criteria": ["SOP（W46）", "初期流動管理 6 週間（全数 EOL＋抜取強化）", "市場品質モニタリング", "教訓（Lessons Learned）登録"]}}], "design_reviews": [{"id": "DR1", "name": "構想 DR", "week": 11, "status": "完了", "scope": "コンセプト、レイアウト、規則エンベロープ、重量配分", "decision": "承認（条件付き：ローラースパン 103 mm に修正）"}, {"id": "DR2", "name": "詳細設計 DR", "week": 18, "status": "完了", "scope": "図面、公差解析（ギヤ噛合い・軸間）、基板回路、DFMEA", "decision": "承認"}, {"id": "DR3", "name": "試作評価 DR", "week": 24, "status": "完了", "scope": "PT2 評価（落下・耐久・走行・CFD 相関）", "decision": "承認（ECN-0421 ボディ肉厚 0.9→1.0 mm）"}, {"id": "DR4", "name": "工程設計 DR", "week": 32, "status": "完了", "scope": "PFMEA、ライン能力、金型 T1、管理計画", "decision": "承認"}, {"id": "DR5", "name": "量産移行 DR", "week": 43, "status": "予定", "scope": "PP 結果、PPAP、工程能力、法規適合", "decision": "—"}], "ppap": [{"no": 1, "name": "設計記録（図面・3D・仕様書）", "status": "承認", "owner": "機構設計"}, {"no": 2, "name": "技術変更文書（ECN）", "status": "承認", "owner": "機構設計"}, {"no": 3, "name": "技術承認（商品企画による承認）", "status": "承認", "owner": "商品企画"}, {"no": 4, "name": "DFMEA", "status": "承認", "owner": "機構設計"}, {"no": 5, "name": "工程フロー図", "status": "承認", "owner": "生産技術"}, {"no": 6, "name": "PFMEA", "status": "承認", "owner": "生産技術"}, {"no": 7, "name": "管理計画（量産版）", "status": "審査中", "owner": "品質保証"}, {"no": 8, "name": "測定システム解析（MSA・GR&R）", "status": "承認", "owner": "品質保証"}, {"no": 9, "name": "寸法測定結果（全 CC/SC・5 個×キャビ）", "status": "承認", "owner": "品質保証"}, {"no": 10, "name": "材料・性能試験結果（DVP&R）", "status": "審査中", "owner": "品質保証"}, {"no": 11, "name": "初期工程調査（Cpk）", "status": "要処置", "owner": "品質保証", "note": "タイヤ外径 Cpk 1.21 → 8D-0037"}, {"no": 12, "name": "有資格試験所文書", "status": "承認", "owner": "品質保証"}, {"no": 13, "name": "外観承認報告書（AAR）", "status": "承認", "owner": "デザイン"}, {"no": 14, "name": "製品サンプル", "status": "提出済", "owner": "品質保証"}, {"no": 15, "name": "マスターサンプル", "status": "提出済", "owner": "品質保証"}, {"no": 16, "name": "検査補助具（治具・ゲージ）", "status": "承認", "owner": "生産技術"}, {"no": 17, "name": "固有要求事項（玩具安全 ST/EN 71/ASTM F963、電波法、RoHS）", "status": "審査中", "owner": "品質保証", "note": "EN 71-3 結果待ち（W41）"}, {"no": 18, "name": "部品提出保証書（PSW）", "status": "未提出", "owner": "品質保証"}], "dfmea": [{"item": "シャーシ 車軸受け", "fm": "穴径過大でガタ", "effect": "ギヤ噛合い不良・異音・速度低下", "S": 6, "cause": "金型摩耗・成形収縮ばらつき", "O": 3, "prev": "収縮率を考慮した金型補正、PC/ABS 選定", "det": "全キャビ寸法測定（T1・量産）", "D": 3, "action": "", "status": "完了", "pn": "VW-CHS-100"}, {"item": "ギヤ列", "fm": "歯飛び", "effect": "走行不能", "S": 7, "cause": "カウンター軸のたわみ", "O": 4, "prev": "軸径・支持スパン見直し（DR2）", "det": "100 h 耐久試験", "D": 4, "action": "軸受け部リブ追加", "status": "完了", "pn": "VW-GER-161"}, {"item": "ホイール", "fm": "車軸から抜ける", "effect": "走行中にタイヤ脱落（コース外へ飛散）", "S": 8, "cause": "圧入代不足", "O": 3, "prev": "圧入代 0.05 mm（ECN-0412）", "det": "抜去力試験 ≥ 30 N（DVP&R-04）", "D": 3, "action": "", "status": "完了", "pn": "VW-WHL-120"}, {"item": "ボディ", "fm": "落下で割れ", "effect": "外観不良・鋭利な破片（安全）", "S": 9, "cause": "肉厚 0.9 mm では衝撃不足", "O": 4, "prev": "肉厚 1.0 mm・R 部 0.5 mm 以上（ECN-0421）", "det": "落下試験 1 m ×10（EN 71-1 準拠）", "D": 3, "action": "肉厚変更済・再試験合格", "status": "完了", "pn": "VW-BDY-110"}, {"item": "制御基板", "fm": "電池逆挿入で破損", "effect": "発熱・焦げ臭（安全）", "S": 10, "cause": "逆接保護なし", "O": 2, "prev": "TVS＋MOSFET 逆接保護回路", "det": "逆接 10 分試験（DVP&R-09）", "D": 2, "action": "", "status": "完了", "pn": "VW-PCB-190"}, {"item": "制御基板", "fm": "突入電流でリセット", "effect": "スタート直後に停止", "S": 6, "cause": "モーター起動電流で電圧降下", "O": 5, "prev": "ソフトスタート 120 ms（FW 1.3.0）", "det": "EOL で立上り波形判定", "D": 3, "action": "", "status": "完了", "pn": "VW-PCB-190"}, {"item": "BLE 通信", "fm": "コース上で切断", "effect": "テレメトリ欠損（走行は継続）", "S": 4, "cause": "金属フェンス・人混みでの減衰", "O": 5, "prev": "バッファ保存→ピット再送", "det": "実コース通信試験", "D": 5, "action": "アンテナ配置最適化", "status": "実施中", "pn": "VW-PCB-190"}, {"item": "ローラー", "fm": "ベアリング脱落", "effect": "コースアウト", "S": 7, "cause": "ローラー内径の圧入代ばらつき", "O": 3, "prev": "内径 Cpk 管理", "det": "抜去力抜取試験", "D": 4, "action": "", "status": "完了", "pn": "VW-ROL-140"}, {"item": "磁石", "fm": "誤飲（小部品）", "effect": "重大な健康被害", "S": 10, "cause": "スパーギヤからの脱落", "O": 2, "prev": "圧入＋カシメ、ギヤ内に封入", "det": "引張試験 50 N・小部品試験（EN 71-1）", "D": 2, "action": "", "status": "完了", "pn": "VW-MAG-191"}, {"item": "スイッチ", "fm": "接点不良", "effect": "電源が入らない", "S": 5, "cause": "接点ばね荷重不足", "O": 3, "prev": "りん青銅 0.15t", "det": "5,000 回開閉試験", "D": 4, "action": "", "status": "完了", "pn": "VW-SW-102"}], "pfmea": [{"item": "M04 タイヤ成形", "fm": "外径ばらつき", "effect": "左右径差で直進性悪化", "S": 6, "cause": "TPE 乾燥不足・金型温度変動", "O": 5, "prev": "乾燥機 露点管理", "det": "抜取 n=5/2h 外径測定", "D": 4, "action": "8D-0037：金型温調 ±1℃ 化、全キャビ測定", "status": "実施中"}, {"item": "A10 端子圧入", "fm": "圧入不足", "effect": "接触不良・発熱", "S": 7, "cause": "圧入荷重不足", "O": 3, "prev": "サーボプレス荷重・変位監視", "det": "全数 荷重波形判定（自動 NG 排出）", "D": 2, "action": "", "status": "完了"}, {"item": "A30 はんだ付け", "fm": "はんだ不足・ブリッジ", "effect": "動作不良・短絡", "S": 8, "cause": "こて先温度・送り量", "O": 3, "prev": "温度監視・こて先寿命管理", "det": "画像検査＋EOL 電流", "D": 3, "action": "", "status": "完了"}, {"item": "A50 ホイール圧入", "fm": "圧入深さ不良", "effect": "トレッド不揃い・振れ", "S": 6, "cause": "治具摩耗", "O": 3, "prev": "治具点検 週次", "det": "全数 振れ測定", "D": 2, "action": "", "status": "完了"}, {"item": "A60 ねじ締め", "fm": "締付不足", "effect": "走行中ステー緩み・脱落", "S": 8, "cause": "ビット摩耗・座面異物", "O": 3, "prev": "ビット交換 5,000 本", "det": "全数 トルク・角度監視", "D": 2, "action": "", "status": "完了"}, {"item": "S50 リフロー", "fm": "温度プロファイル逸脱", "effect": "はんだ接合不良（潜在）", "S": 8, "cause": "ヒーター劣化", "O": 2, "prev": "プロファイラ 日次", "det": "AOI＋FCT", "D": 3, "action": "", "status": "完了"}, {"item": "A90 梱包", "fm": "異品種混入", "effect": "誤出荷", "S": 6, "cause": "段取替え時の残品", "O": 3, "prev": "品番ラベル照合（バーコード）", "det": "出荷前 全数スキャン", "D": 2, "action": "", "status": "完了"}], "control_plan": [{"no": "CP-01", "process": "M01 シャーシ成形", "char": "車軸受け穴径", "cls": "CC", "spec": "φ6.00 +0.03/0", "lsl": 6.0, "usl": 6.03, "mean": 6.0148, "sd": 0.0026, "method": "エアマイクロ", "sample": "n=5", "freq": "2 h", "reaction": "停止・隔離・金型点検", "pn": "VW-CHS-100"}, {"no": "CP-02", "process": "M01 シャーシ成形", "char": "ホイールベース", "cls": "CC", "spec": "82.00 ±0.05", "lsl": 81.95, "usl": 82.05, "mean": 82.004, "sd": 0.0082, "method": "画像寸法測定機", "sample": "n=5", "freq": "2 h", "reaction": "停止・隔離", "pn": "VW-CHS-100"}, {"no": "CP-03", "process": "M03 ホイール成形", "char": "軸穴径", "cls": "CC", "spec": "φ1.95 ±0.01", "lsl": 1.94, "usl": 1.96, "mean": 1.9502, "sd": 0.0016, "method": "ピンゲージ＋エアマイクロ", "sample": "n=8（全キャビ）", "freq": "2 h", "reaction": "停止・隔離", "pn": "VW-WHL-120"}, {"no": "CP-04", "process": "M04 タイヤ成形", "char": "外径", "cls": "CC", "spec": "φ26.00 ±0.10", "lsl": 25.9, "usl": 26.1, "mean": 26.018, "sd": 0.0227, "method": "レーザー外径計", "sample": "n=8（全キャビ）", "freq": "1 h（8D 中は 30 分）", "reaction": "停止・全数選別", "pn": "VW-TIR-130"}, {"no": "CP-05", "process": "M04 タイヤ成形", "char": "硬度", "cls": "SC", "spec": "A60 ±3", "lsl": 57, "usl": 63, "mean": 60.3, "sd": 0.62, "method": "デュロメータ", "sample": "n=3", "freq": "ロット", "reaction": "ロット保留", "pn": "VW-TIR-130"}, {"no": "CP-06", "process": "M02 ボディ成形", "char": "肉厚", "cls": "SC", "spec": "1.00 ±0.05", "lsl": 0.95, "usl": 1.05, "mean": 1.004, "sd": 0.0095, "method": "超音波厚さ計", "sample": "n=3", "freq": "4 h", "reaction": "ロット保留", "pn": "VW-BDY-110"}, {"no": "CP-07", "process": "受入 車軸", "char": "軸径", "cls": "CC", "spec": "φ2.000 0/−0.005", "lsl": 1.995, "usl": 2.0, "mean": 1.9974, "sd": 0.0005, "method": "マイクロメータ", "sample": "AQL 0.65", "freq": "ロット", "reaction": "返品・仕入先 8D", "pn": "VW-SFT-170"}, {"no": "CP-08", "process": "受入 モーター", "char": "無負荷回転数", "cls": "SC", "spec": "12,500 ±8%", "lsl": 11500, "usl": 13500, "mean": 12540, "sd": 210, "method": "モーターテスター", "sample": "n=32/ロット", "freq": "ロット", "reaction": "ロット保留", "pn": "VW-MTR-180"}, {"no": "CP-09", "process": "A60 ねじ締め", "char": "締付トルク", "cls": "SC", "spec": "0.18 ±0.02 N·m", "lsl": 0.16, "usl": 0.2, "mean": 0.1806, "sd": 0.0036, "method": "トルクドライバ（全数記録）", "sample": "全数", "freq": "全数", "reaction": "自動 NG 排出", "pn": "VW-SCR-195"}, {"no": "CP-10", "process": "A80 EOL", "char": "ソフトスタート立上り", "cls": "SC", "spec": "120 ±10 ms", "lsl": 110, "usl": 130, "mean": 120.6, "sd": 1.9, "method": "EOL 試験機（電流波形）", "sample": "全数", "freq": "全数", "reaction": "自動 NG 排出", "pn": "VW-PCB-190"}, {"no": "CP-11", "process": "A80 EOL", "char": "待機電流", "cls": "SC", "spec": "≤ 25 µA", "lsl": null, "usl": 25, "mean": 14.2, "sd": 1.6, "method": "EOL 試験機", "sample": "全数", "freq": "全数", "reaction": "自動 NG 排出", "pn": "VW-PCB-190"}, {"no": "CP-12", "process": "A50 ホイール圧入", "char": "振れ", "cls": "SC", "spec": "≤ 0.05", "lsl": null, "usl": 0.05, "mean": 0.021, "sd": 0.0058, "method": "レーザー変位計", "sample": "全数", "freq": "全数", "reaction": "自動 NG 排出", "pn": "VW-WHL-120"}], "dvpr": [{"id": "DV-01", "test": "落下試験 1 m ×10 方向", "std": "EN 71-1 / ST2016", "spec": "割れ・鋭利な縁なし", "n": 10, "status": "合格", "result": "10/10 合格（肉厚 1.0 mm）"}, {"id": "DV-02", "test": "小部品試験（3 歳未満用ではない旨の表示含む）", "std": "EN 71-1 8.2 / ASTM F963", "spec": "表示・構造適合", "n": 5, "status": "合格", "result": "警告表示 対象年齢 8+"}, {"id": "DV-03", "test": "化学（重金属溶出・フタル酸）", "std": "EN 71-3 / ST2016 第3部", "spec": "基準値以下", "n": 3, "status": "実施中", "result": "第三者試験所 W41 報告予定"}, {"id": "DV-04", "test": "ホイール抜去力", "std": "社内規格 VW-TS-012", "spec": "≥ 30 N", "n": 30, "status": "合格", "result": "平均 46.2 N、最小 38.9 N"}, {"id": "DV-05", "test": "駆動系耐久 100 h（ローラーダイナモ）", "std": "社内規格 VW-TS-020", "spec": "歯飛び・異音なし、速度低下 ≤ 5%", "n": 6, "status": "合格", "result": "速度低下 2.8%"}, {"id": "DV-06", "test": "コース走行 500 周（3 レーン標準コース）", "std": "社内規格 VW-TS-021", "spec": "部品脱落なし", "n": 6, "status": "合格", "result": "脱落なし・ステー緩みなし"}, {"id": "DV-07", "test": "高温高湿 60℃/90%RH 96 h", "std": "社内規格 VW-TS-030", "spec": "変形 ≤ 0.2 mm・動作正常", "n": 5, "status": "合格", "result": "変形 0.08 mm"}, {"id": "DV-08", "test": "熱衝撃 −20↔60℃ 50 サイクル", "std": "社内規格 VW-TS-031", "spec": "割れ・はんだクラックなし", "n": 5, "status": "合格", "result": "異常なし"}, {"id": "DV-09", "test": "電池逆挿入 10 分", "std": "社内規格 VW-TS-040", "spec": "発熱 ≤ 15 K・破損なし", "n": 10, "status": "合格", "result": "最大 +3.1 K"}, {"id": "DV-10", "test": "EMC（放射・静電気）", "std": "EN 55014-1/-2、IEC 61000-4-2", "spec": "適合", "n": 3, "status": "合格", "result": "ESD ±8 kV 合格"}, {"id": "DV-11", "test": "電波法（2.4 GHz）", "std": "技術基準適合証明（認証済モジュール）", "spec": "認証番号表示", "n": 1, "status": "合格", "result": "工事設計認証 取得済モジュール使用"}, {"id": "DV-12", "test": "空力 相関（CFD vs 風洞）", "std": "社内規格 VW-TS-050", "spec": "Cd 差 ≤ 15%", "n": 3, "status": "合格", "result": "差 9%"}, {"id": "DV-13", "test": "包装落下・振動（輸送）", "std": "JIS Z 0200", "spec": "製品損傷なし", "n": 5, "status": "実施中", "result": "W41 完了予定"}, {"id": "DV-14", "test": "RoHS（10 物質）", "std": "EU 2011/65/EU", "spec": "適合", "n": 1, "status": "合格", "result": "全部品 適合宣言取得"}], "ecn": [{"id": "ECN-0412", "title": "ホイール軸穴径 φ1.96→φ1.95（圧入代増）", "reason": "DV-04 初回 抜去力不足", "affected": ["VW-WHL-120", "MD-120"], "status": "完了", "week": 21, "disposition": "金型修正、旧品はスクラップ（試作のみ）"}, {"id": "ECN-0418", "title": "FW 1.2.4→1.3.0（ソフトスタート 120 ms）", "reason": "DFMEA 突入電流リセット", "affected": ["VW-PCB-190", "FW-VX-LINK"], "status": "完了", "week": 27, "disposition": "書込治具更新、在庫基板は再書込"}, {"id": "ECN-0421", "title": "ボディ肉厚 0.9→1.0 mm", "reason": "DR3 落下試験", "affected": ["VW-BDY-110", "VW-BDY-111", "VW-BDY-112", "MD-110"], "status": "完了", "week": 26, "disposition": "金型肉盛り修正、重量 +0.9 g"}, {"id": "ECN-0425", "title": "ローラーステー 穴位置 ±0.1→±0.05", "reason": "ローラースパンばらつき", "affected": ["VW-STF-150", "VW-STR-151"], "status": "完了", "week": 33, "disposition": "CNC プログラム更新"}, {"id": "ECN-0431", "title": "タイヤ金型 温調回路追加", "reason": "8D-0037 外径 Cpk 1.21", "affected": ["MD-130", "M04"], "status": "承認待ち（CCB W41）", "week": 40, "disposition": "切替は PP2 から、在庫は全数選別"}], "eightd": [{"id": "8D-0037", "title": "タイヤ外径ばらつき（Cpk 1.21 < 1.67）", "opened_week": 38, "steps": [{"d": "D1 チーム編成", "s": "完了", "note": "品証・生技・成形・金型メーカー"}, {"d": "D2 問題記述", "s": "完了", "note": "キャビ 3・7 で外径 +0.06 側へ偏り"}, {"d": "D3 暫定処置", "s": "完了", "note": "全数レーザー選別、測定頻度 30 分"}, {"d": "D4 根本原因", "s": "完了", "note": "金型温度 ±4℃ 変動（温調回路不足）"}, {"d": "D5 恒久対策の選定", "s": "実施中", "note": "温調回路追加（ECN-0431）"}, {"d": "D6 恒久対策の実施・検証", "s": "未着手", "note": "Cpk ≥ 1.67 を 3 ロット確認"}, {"d": "D7 再発防止", "s": "未着手", "note": "金型設計標準に温調指針追加"}, {"d": "D8 チーム表彰", "s": "未着手", "note": ""}]}], "suppliers": [{"id": "SUP-01", "name": "東邦マイクロモーター（架空）", "category": "モーター", "rating": "A", "otd": 98.6, "ppm": 42, "audit": "W12 監査済"}, {"id": "SUP-02", "name": "信州精機ベアリング（架空）", "category": "ボールベアリング", "rating": "A", "otd": 99.2, "ppm": 8, "audit": "W14 監査済"}, {"id": "SUP-03", "name": "大田精密シャフト（架空）", "category": "シャフト・ピニオン・ねじ", "rating": "B", "otd": 96.1, "ppm": 120, "audit": "W29 監査・改善指示 2 件"}, {"id": "SUP-04", "name": "関東エレクトロ商事（架空）", "category": "電子部品（商社）", "rating": "A", "otd": 97.8, "ppm": 3, "audit": "書類監査"}, {"id": "SUP-05", "name": "城南プレス工業（架空）", "category": "端子・スイッチ", "rating": "A", "otd": 99.0, "ppm": 25, "audit": "W16 監査済"}, {"id": "SUP-06", "name": "北陸マグネティクス（架空）", "category": "磁石", "rating": "A", "otd": 98.9, "ppm": 0, "audit": "書類監査"}, {"id": "SUP-07", "name": "湾岸パッケージ印刷（架空）", "category": "パッケージ・ステッカー", "rating": "B", "otd": 95.4, "ppm": 310, "audit": "W31 色ブレ対策中"}, {"id": "SUP-08", "name": "中部樹脂商事（架空）", "category": "樹脂材料", "rating": "A", "otd": 99.5, "ppm": 0, "audit": "書類監査"}], "departments": [{"id": "EXP", "name": "経営企画", "hc": 4, "mission": "事業計画・ポートフォリオ・投資判断", "systems": ["BI"], "kpis": [["営業利益率", "14.2%", "≥ 12%"], ["開発投資回収期間", "2.4 年", "≤ 3 年"]]}, {"id": "PMK", "name": "商品企画・マーケティング", "hc": 6, "mission": "商品コンセプト・価格・販促・コミュニティ", "systems": ["CRM", "PLM"], "kpis": [["予約数（SOP 前）", "8,420 台", "≥ 6,000"], ["NPS（試走会）", "+46", "≥ +30"]]}, {"id": "DSN", "name": "デザイン", "hc": 5, "mission": "ボディ造形・CMF・グラフィック", "systems": ["CAD（サーフェス）", "PLM"], "kpis": [["AAR 一発承認率", "92%", "≥ 90%"]]}, {"id": "MEC", "name": "機構設計", "hc": 9, "mission": "シャーシ・駆動系・公差設計・図面", "systems": ["3D CAD", "PLM"], "kpis": [["図面出図 遅延", "0 件", "0"], ["設計変更（G2 後）", "4 件", "≤ 5"]]}, {"id": "ELE", "name": "電気・ファームウェア", "hc": 7, "mission": "基板回路・FW・アプリ連携・認証", "systems": ["EDA", "Git / CI", "ALM"], "kpis": [["FW 不具合（PP 後）", "1 件", "≤ 2"], ["テスト自動化率", "84%", "≥ 80%"]]}, {"id": "CAE", "name": "CAE・空力", "hc": 3, "mission": "CFD・構造解析・走行シミュレーション", "systems": ["CFD", "構造解析"], "kpis": [["CFD–試験 相関（Cd）", "9%", "≤ 15%"]]}, {"id": "PRT", "name": "試作", "hc": 4, "mission": "3D プリント・切削・簡易型・試作組立", "systems": ["MES（試作）"], "kpis": [["試作リードタイム", "3.5 日", "≤ 5 日"]]}, {"id": "QA", "name": "品質保証", "hc": 8, "mission": "APQP 推進・PPAP・認証・市場品質・監査", "systems": ["QMS", "SPC"], "kpis": [["初期流動 不良率", "—", "≤ 500 ppm"], ["PPAP 承認", "12/18", "18/18（W44）"]]}, {"id": "PE", "name": "生産技術", "hc": 7, "mission": "工程設計・設備・金型・治具・ライン立上げ", "systems": ["MES", "PLM"], "kpis": [["Run@Rate 達成率", "—", "≥ 100%"], ["金型 T1→OK ショット", "T3", "≤ T3"]]}, {"id": "MFG", "name": "製造（成形・SMT・組立・物流）", "hc": 46, "mission": "安全・品質・納期・コスト", "systems": ["MES", "WMS"], "kpis": [["OEE（組立）", "—", "≥ 80%"], ["休業災害", "0", "0"]]}, {"id": "PUR", "name": "購買・調達", "hc": 5, "mission": "仕入先選定・見積・発注・仕入先品質", "systems": ["ERP", "SRM"], "kpis": [["購入品 原価低減", "−4.2%", "−3%"], ["仕入先 OTD", "97.9%", "≥ 97%"]]}, {"id": "SCM", "name": "生産管理・SCM", "hc": 5, "mission": "S&OP・基準日程・MRP・在庫", "systems": ["ERP", "APS"], "kpis": [["在庫日数", "—", "≤ 18 日"], ["欠品", "0 件", "0"]]}, {"id": "SAL", "name": "営業・EC", "hc": 6, "mission": "量販・専門店・EC・海外代理店", "systems": ["CRM", "EC"], "kpis": [["受注残", "—", "—"], ["回収遅延", "0.3%", "≤ 1%"]]}, {"id": "CS", "name": "カスタマーサポート", "hc": 4, "mission": "問い合わせ・修理・パーツ供給・コミュニティ", "systems": ["CRM（チケット）"], "kpis": [["初回解決率", "81%", "≥ 75%"], ["一次回答", "3.2 h", "≤ 8 h"]]}, {"id": "FIN", "name": "経理・原価", "hc": 4, "mission": "決算・原価計算・予算・資金", "systems": ["ERP（会計）"], "kpis": [["月次締め", "3 営業日", "≤ 4"], ["原価差異", "—", "±2%"]]}, {"id": "HR", "name": "人事・総務", "hc": 4, "mission": "採用・教育・技能認定・労務・安全衛生", "systems": ["HRIS", "LMS"], "kpis": [["技能認定（多能工）", "68%", "≥ 70%"], ["離職率", "4.1%", "≤ 6%"]]}, {"id": "LEG", "name": "法務・知財", "hc": 2, "mission": "契約・商標・意匠・特許・表示", "systems": ["契約管理"], "kpis": [["意匠出願", "3 件", "—"], ["他社権利クリアランス", "完了", "G2 前"]]}, {"id": "IT", "name": "IT・PLM", "hc": 3, "mission": "PLM/ERP/MES 連携・データ基盤・セキュリティ", "systems": ["PLM", "ERP", "MES"], "kpis": [["システム稼働率", "99.95%", "≥ 99.9%"]]}], "value_streams": [{"id": "I2L", "name": "企画〜量産（Idea-to-Launch）", "steps": [["商品企画書", "PMK", "PLM", "—"], ["PRD・設計目標", "PMK", "PLM", "G1"], ["3D 設計・図面", "MEC", "CAD/PLM", "DR2"], ["試作・評価", "PRT", "MES", "DR3"], ["工程設計", "PE", "PLM/MES", "DR4"], ["PPAP", "QA", "QMS", "G4"], ["SOP", "MFG", "MES", "W46"]]}, {"id": "P2P", "name": "計画〜生産（Plan-to-Produce）", "steps": [["需要予測", "SAL", "CRM", "月次"], ["S&OP 会議", "SCM", "ERP", "月次"], ["基準日程 MPS", "SCM", "APS", "週次"], ["MRP 展開", "SCM", "ERP", "日次"], ["製造指示", "SCM", "MES", "日次"], ["実績・トレーサビリティ", "MFG", "MES", "リアルタイム"]]}, {"id": "PR2P", "name": "調達〜支払（Procure-to-Pay）", "steps": [["購買依頼", "SCM", "ERP", "MRP 起票"], ["見積・選定", "PUR", "SRM", "3 営業日"], ["発注", "PUR", "ERP", "承認 1 日"], ["入荷・受入検査", "QA", "QMS/WMS", "当日"], ["検収", "PUR", "ERP", "当日"], ["請求照合（3-way match）", "FIN", "ERP", "月末"], ["支払", "FIN", "ERP", "翌月末"]]}, {"id": "O2C", "name": "受注〜入金（Order-to-Cash）", "steps": [["受注（量販・EC・代理店）", "SAL", "CRM/EC", "即時"], ["与信確認", "FIN", "ERP", "自動"], ["在庫引当", "SCM", "ERP/WMS", "即時"], ["出荷", "MFG", "WMS", "当日"], ["請求", "FIN", "ERP", "締め日"], ["入金消込", "FIN", "ERP", "入金日"]]}, {"id": "R2R", "name": "記帳〜報告（Record-to-Report）", "steps": [["仕訳（自動連携）", "FIN", "ERP", "日次"], ["原価計算（標準・差異）", "FIN", "ERP", "月次"], ["月次締め", "FIN", "ERP", "3 営業日"], ["管理会計レポート", "EXP", "BI", "月次"]]}, {"id": "H2R", "name": "採用〜退職（Hire-to-Retire）", "steps": [["要員計画", "HR", "HRIS", "四半期"], ["採用", "HR", "HRIS", "—"], ["教育・技能認定", "HR", "LMS", "継続"], ["評価・処遇", "HR", "HRIS", "半期"]]}, {"id": "I2R", "name": "問い合わせ〜解決（Issue-to-Resolution）", "steps": [["問い合わせ受付", "CS", "CRM", "即時"], ["一次回答", "CS", "CRM", "≤ 8 h"], ["不具合解析", "QA", "QMS", "≤ 5 日"], ["8D・是正", "QA", "QMS", "—"], ["設計／工程変更（ECR→ECN）", "MEC", "PLM", "CCB"], ["お客様回答・効果確認", "CS", "CRM", "—"]]}, {"id": "CHG", "name": "設計変更（ECR→ECN）", "steps": [["ECR 起票", "MEC", "PLM", "—"], ["影響分析（BOM・金型・在庫・認証）", "PE", "PLM/ERP", "5 日"], ["変更審議会 CCB", "QA", "PLM", "週次"], ["ECN 発行・切替日決定", "MEC", "PLM", "—"], ["在庫・仕掛処置", "SCM", "ERP", "切替日"], ["効果確認・PPAP 更新", "QA", "QMS", "—"]]}], "mrp": {"weeks": 12, "start_week": 41, "demand": [0, 0, 0, 0, 0, 2400, 4800, 5600, 5600, 5600, 5600, 5600], "mix": {"KST-STD": 0.5, "KST-AERO": 0.25, "KST-LOW": 0.25}, "items": [{"pn": "VW-MTR-180", "name": "モーター（3 グレード合算）", "per": 1, "on_hand": 1800, "safety": 3000, "lot": 5000, "lead_w": 4, "receipts": {"3": 5000}}, {"pn": "VW-BRG-171", "name": "ベアリング 1150", "per": 4, "on_hand": 6000, "safety": 8000, "lot": 20000, "lead_w": 6, "receipts": {"2": 20000}}, {"pn": "VW-BRG-141", "name": "ベアリング 850", "per": 4, "on_hand": 4000, "safety": 8000, "lot": 20000, "lead_w": 6, "receipts": {"2": 20000}}, {"pn": "VW-SFT-170", "name": "車軸", "per": 2, "on_hand": 3200, "safety": 4000, "lot": 10000, "lead_w": 4, "receipts": {}}, {"pn": "U1", "name": "BLE SoC", "per": 1, "on_hand": 6000, "safety": 4000, "lot": 12000, "lead_w": 12, "receipts": {"5": 12000}}, {"pn": "U2", "name": "6軸 IMU", "per": 1, "on_hand": 9000, "safety": 4000, "lot": 10000, "lead_w": 10, "receipts": {}}, {"pn": "RESIN-PCABS", "name": "PC/ABS 樹脂（kg）", "per": 0.041, "on_hand": 300, "safety": 150, "lot": 500, "lead_w": 2, "receipts": {}}, {"pn": "VW-PKG-200", "name": "パッケージ一式", "per": 1, "on_hand": 2500, "safety": 3000, "lot": 10000, "lead_w": 3, "receipts": {"4": 10000}}]}, "sales_channels": [["量販店（玩具・ホビー）", 0.46], ["模型専門店", 0.22], ["自社 EC", 0.18], ["海外代理店", 0.14]], "vave": [{"id": "VE-01", "title": "パッケージ印刷 4C→3C＋ニス（ブランド部のみ 4C）", "owner": "購買・調達", "saving": 12, "status": "合意（W42 切替）"}, {"id": "VE-02", "title": "BLE SoC 年間数量契約（36k/年）", "owner": "購買・調達", "saving": 14, "status": "合意"}, {"id": "VE-03", "title": "ファミリー金型 MD-160 ホットランナー化（ランナー率 35%→8%）", "owner": "生産技術", "saving": 4, "status": "検討中（投資 ¥1.9M）"}, {"id": "VE-04", "title": "ステー CNC 2 枚取り→6 枚取りネスティング", "owner": "生産技術", "saving": 11, "status": "試行中"}, {"id": "VE-05", "title": "ねじ M2×8 ×6 → M2×6 ×4＋スナップフィット化", "owner": "機構設計", "saving": 9, "status": "ECR 起票（ECR-0219）"}, {"id": "VE-06", "title": "物流 パレット積載 24→36 箱（外装寸法見直し）", "owner": "生産管理・SCM", "saving": 6, "status": "合意"}], "test_track": {"name": "3 レーン標準コース（社内テストコース）", "lap_m": 42.0, "lanes": 3, "crr": 0.022, "eta_drive": 0.72, "cd": 0.52, "frontal_area_m2": 0.0029, "rho": 1.2, "corner_factor": 0.86}, "people": {"total": 130}};                                         // mini4wd/data/company.json, inlined by web/build.py
+const PART = Object.fromEntries(D.parts.map(p => [p.pn, p]));
+const SUP = Object.fromEntries(D.suppliers.map(s => [s.id, s]));
+const DEPT = Object.fromEntries(D.departments.map(d => [d.id, d]));
+const MOTOR = Object.fromEntries(D.motors.map(m => [m.id, m]));
+const GEAR = Object.fromEntries(D.gears.map(g => [g.id, g]));
+const BODY = Object.fromEntries(D.bodies.map(b => [b.id, b]));
+const TAKT = D.meta.takt_s, SCALE = D.meta.demo_time_scale, CYC = TAKT / SCALE;   // demo seconds per assembly cycle
+const yen = v => '¥' + Math.round(v).toLocaleString();
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const smooth = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+const lerp = (a, b, f) => a + (b - a) * f;
+const mod = (a, n) => ((a % n) + n) % n;
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+function rng(seed) { let s = seed >>> 0 || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function gauss(r) { let u = 0, v = 0; while (u === 0) u = r(); while (v === 0) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+
+// ============================================================ renderer
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const pmrem = new THREE.PMREMGenerator(renderer);
+const ENV = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+// ============================================================ materials & geometry helpers
+const std = (color, metalness = 0.2, roughness = 0.5, extra = {}) => new THREE.MeshStandardMaterial({ color, metalness, roughness, ...extra });
+const M = {
+  dark: std(0x2c3037, 0.4, 0.55), grey: std(0x5d646c, 0.4, 0.55), light: std(0xc9ced4, 0.1, 0.7), white: std(0xeceef0, 0.05, 0.6),
+  steel: std(0xa4abb2, 0.9, 0.3), chrome: std(0xe5e8ea, 1, 0.15), black: std(0x141518, 0.2, 0.6), rubber: std(0x18191b, 0, 0.85),
+  blue: std(0x2f6fb3, 0.35, 0.45), orange: std(0xff8a3d, 0.3, 0.45), yellow: std(0xf2c230, 0.2, 0.5), green: std(0x2f8f5b, 0.2, 0.6),
+  wood: std(0x9c7b58, 0, 0.8), floor: std(0x3c4148, 0.1, 0.9), carpet: std(0x2b3440, 0, 0.95), glass: new THREE.MeshPhysicalMaterial({ color: 0xbfe3ff, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
+  screen: std(0x0a0c10, 0, 0.3, { emissive: 0x6aa8ff, emissiveIntensity: 0.25 }), lamp: std(0xffffff, 0, 0.4, { emissive: 0xfff5e0, emissiveIntensity: 1.6 }),
+  pcb: std(0x1f6b3a, 0.1, 0.5), chip: std(0x111214, 0.2, 0.4), copper: std(0xc98a4b, 0.9, 0.3), brass: std(0xc7a14a, 0.9, 0.3),
+  frp: std(0x2a2d31, 0.2, 0.35), pom: std(0xf0eee6, 0, 0.45), canopy: new THREE.MeshPhysicalMaterial({ color: 0x111820, metalness: 0.3, roughness: 0.08, clearcoat: 1 }),
+  glow: std(0x220000, 0, 0.4, { emissive: 0xff5a1a, emissiveIntensity: 1.4 }), led: std(0x002200, 0, 0.3, { emissive: 0x33ff88, emissiveIntensity: 1.6 }),
+};
+const GEO = new Map();
+const boxGeo = (w, h, d) => { const k = `b${w},${h},${d}`; if (!GEO.has(k)) GEO.set(k, new THREE.BoxGeometry(w, h, d)); return GEO.get(k); };
+const cylGeo = (rt, rb, h, s) => { const k = `c${rt},${rb},${h},${s}`; if (!GEO.has(k)) GEO.set(k, new THREE.CylinderGeometry(rt, rb, h, s)); return GEO.get(k); };
+function box(w, h, d, mat, x = 0, y = 0, z = 0) { const m = new THREE.Mesh(boxGeo(w, h, d), mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; return m; }
+function cyl(rt, rb, h, mat, s = 16, x = 0, y = 0, z = 0) { const m = new THREE.Mesh(cylGeo(rt, rb, h, s), mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; return m; }
+const rX = (o, a) => { o.rotation.x = a; return o; }, rZ = (o, a) => { o.rotation.z = a; return o; }, rY = (o, a) => { o.rotation.y = a; return o; };
+function mergeObj(root) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), byMat = new Map();
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    let g = o.geometry.clone(); if (g.index) g = g.toNonIndexed();
+    g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (!byMat.has(o.material)) byMat.set(o.material, []); byMat.get(o.material).push(g);
+  });
+  const mats = [], parts = [];
+  for (const [mat, list] of byMat) { mats.push(mat); parts.push(mergeGeometries(list, false)); }
+  const mesh = new THREE.Mesh(mergeGeometries(parts, true), mats); mesh.castShadow = mesh.receiveShadow = true; return mesh;
+}
+function canvasTex(w, h, draw, repeat = false) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping; t.userData.canvas = cv; return t;
+}
+function staticMerge(scene, build, shadow = true) { const g = new THREE.Group(); build(g); const m = mergeObj(g); m.castShadow = shadow; scene.add(m); return m; }
+
+// ============================================================ VELO-32 KESTREL parametric model (millimetres; +x forward, +y up, +z left)
+const DES = D.design;
+const HALF_L = DES.length / 2;
+// body side profile (top line) — shared by the 3D body and the CFD silhouette
+const PROFILES = {
+  std: [[79, 11], [70, 16], [55, 22], [35, 27], [15, 29.5], [-5, 30], [-30, 30.5], [-55, 30], [-70, 28], [-79, 24]],
+  low: [[79, 9], [68, 13], [50, 18], [30, 22], [10, 24.5], [-10, 25], [-35, 25], [-60, 23.5], [-79, 20]],
+};
+const BODY_BASE = 8.0;                                    // skirt line
+function hermite(pts) {                                   // monotone cubic (Fritsch–Carlson) on points sorted by x desc
+  const P = [...pts].sort((a, b) => a[0] - b[0]), n = P.length, d = [], m = [];
+  for (let i = 0; i < n - 1; i++) d.push((P[i + 1][1] - P[i][1]) / (P[i + 1][0] - P[i][0]));
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  return x => {
+    if (x <= P[0][0]) return P[0][1]; if (x >= P[n - 1][0]) return P[n - 1][1];
+    let i = 0; while (x > P[i + 1][0]) i++;
+    const h = P[i + 1][0] - P[i][0], t = (x - P[i][0]) / h, t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * P[i][1] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * P[i + 1][1] + (t3 - t2) * h * m[i + 1];
+  };
+}
+const TOP = { std: hermite(PROFILES.std), low: hermite(PROFILES.low) };
+function halfWidth(x) {
+  const pod = Math.abs(x) < 27 ? (1 - (x / 27) ** 2) ** 2 : 0;
+  const nose = x > 62 ? lerp(1, 0.78, (x - 62) / 17) : x < -70 ? lerp(1, 0.9, (-70 - x) / 9) : 1;
+  return (33 + 11 * pod) * nose;
+}
+const CANOPY = { x: -2, y: 30, rx: 24, ry: 13.5, rz: 16 };
+const WING = { x: -66, y: 40, chord: 22, span: 74 };
+
+function bodyShellGeo(kind, band = null, lift = 0) {
+  const top = TOP[kind], nx = 72, nz = 26, p = 3, pos = [], idx = [];
+  const s0 = band ? -band : -1, s1 = band ? band : 1;
+  for (let i = 0; i <= nx; i++) {
+    const x = -HALF_L + (DES.length * i) / nx, hw = halfWidth(x), ty = top(x);
+    for (let j = 0; j <= nz; j++) {
+      const s = lerp(s0, s1, j / nz), y = BODY_BASE + (ty - BODY_BASE) * Math.pow(Math.max(0, 1 - Math.abs(s) ** p), 1 / p);
+      pos.push(x, y + lift, s * hw);
+    }
+  }
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const a = i * (nz + 1) + j, b = a + nz + 1;
+    idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  if (!band) {                                            // close nose and tail
+    for (const i of [0, nx]) {
+      const c = pos.length / 3; const x = -HALF_L + (DES.length * i) / nx; pos.push(x, BODY_BASE, 0);
+      for (let j = 0; j < nz; j++) { const a = i * (nz + 1) + j; i === 0 ? idx.push(c, a, a + 1) : idx.push(c, a + 1, a); }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+
+function buildCar(variant, opt = {}) {
+  const body = BODY[variant.body], kind = body.profile;
+  const paint = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(variant.color), metalness: 0.15, roughness: 0.32, clearcoat: 0.8, side: THREE.DoubleSide });
+  const root = new THREE.Group(), groups = {}, explode = {};
+  const G = (pn, ex) => { const g = new THREE.Group(); g.name = pn; groups[pn] = g; explode[pn] = ex; root.add(g); return g; };
+  const wz = DES.track / 2, wx = DES.wheelbase / 2, wr = DES.tire_dia / 2, ay = wr;
+  // chassis
+  let g = G('VW-CHS-100', V(0, 0, 0));
+  g.add(box(124, 2, 62, M.dark, 0, 2.6, 0));
+  for (const s of [-1, 1]) g.add(box(124, 12, 2, M.dark, 0, 9, s * 31));
+  g.add(box(14, 6, 56, M.dark, 66, 5, 0), box(12, 6, 56, M.dark, -66, 5, 0));
+  g.add(box(10, 4, 80, M.dark, 71, 5.5, 0), box(8, 4, 80, M.dark, -71, 5.5, 0));
+  g.add(box(26, 16, 2, M.dark, -57, 10, 13), box(26, 16, 2, M.dark, -57, 10, -13), box(56, 1.5, 34, M.dark, 12, 16.2, 0));
+  for (const x of [-wx, wx]) for (const s of [-1, 1]) g.add(box(8, 8, 3, M.dark, x, ay, s * 29.5));
+  g = G('VW-TRM-101', V(0, -18, 0));
+  for (const x of [12 - 26.5, 12 + 26.5]) g.add(box(1, 12, 26, M.steel, x, 9, 0));
+  g = G('VW-SW-102', V(0, -28, 0)); g.add(box(8, 3, 6, M.black, 40, 1.8, 0), box(3, 2, 2, M.orange, 40, 0.6, 0));
+  // drive train
+  g = G('VW-SFT-170', V(0, 0, 0)); for (const x of [-wx, wx]) g.add(rX(cyl(1, 1, 92, M.steel, 10, x, ay, 0), Math.PI / 2));
+  g = G('VW-BRG-171', V(0, 0, 0)); for (const x of [-wx, wx]) for (const s of [-1, 1]) g.add(rX(cyl(2.75, 2.75, 2.5, M.chrome, 16, x, ay, s * 31.5), Math.PI / 2));
+  g = G('VW-GER-163', V(0, 16, 0)); g.add(rX(cyl(9, 9, 2, M.pom, 32, -wx, ay, -24), Math.PI / 2), rX(cyl(8, 8, 2, M.pom, 32, wx, ay, 20), Math.PI / 2));
+  g = G('VW-GER-162', V(0, 20, 0)); g.add(rX(cyl(7, 7, 1.8, M.pom, 32, -wx, ay, 20), Math.PI / 2));
+  g = G('VW-GER-161', V(-10, 22, 0)); g.add(rX(cyl(6.5, 6.5, 3, M.pom, 28, -52, 12, -24), Math.PI / 2));
+  g = G('VW-PRP-172', V(0, 24, 0)); g.add(rZ(cyl(1, 1, 70, M.steel, 10, 0, 9, 20), Math.PI / 2), rZ(cyl(2.2, 2.2, 4, M.pom, 12, 34, 9, 20), Math.PI / 2), rZ(cyl(2.2, 2.2, 4, M.pom, 12, -34, 9, 20), Math.PI / 2));
+  // motor (purchased) + pinion
+  g = G('VW-MTR-180', V(-34, 26, 0));
+  g.add(rX(cyl(10, 10, 22, M.steel, 24, -57, 12, 0), Math.PI / 2), rX(cyl(10.2, 10.2, 5, M.orange, 24, -57, 12, 3), Math.PI / 2), rX(cyl(8, 8, 3, M.black, 20, -57, 12, 12.5), Math.PI / 2),
+    box(1.2, 4, 1, M.copper, -60, 12, 13.5), box(1.2, 4, 1, M.copper, -54, 12, 13.5), rX(cyl(0.8, 0.8, 10, M.steel, 8, -57, 12, -14), Math.PI / 2));
+  g = G('VW-PIN-181', V(-38, 30, 0)); g.add(rX(cyl(2.6, 2.6, 4, M.brass, 12, -57, 12, -18), Math.PI / 2));
+  // electronics
+  g = G('VW-PCB-190', V(0, 38, 0));
+  g.add(box(32, 0.8, 14, M.pcb, 34, 17.6, 0), box(7, 1, 7, M.chip, 30, 18.4, 0), box(3, 0.9, 2.6, M.chip, 40, 18.4, 3.5), box(3, 1, 3, M.chip, 41, 18.4, -3.5),
+    box(2, 0.7, 2, M.chip, 24, 18.3, 4), box(3.2, 0.9, 1.6, M.light, 48, 18.4, 0), box(1, 0.6, 1, M.led, 22, 18.3, -4.5));
+  for (let i = 0; i < 8; i++) g.add(box(1, 0.5, 0.5, M.light, 22 + i * 1.6, 18.2, -1.5 + (i % 2) * 3));
+  g = G('VW-MAG-191', V(0, 18, -12)); g.add(rX(cyl(1, 1, 1, M.chrome, 10, -wx, ay + 5, -25.6), Math.PI / 2));
+  // wheels & tyres
+  const wheelPos = [[wx, wz], [wx, -wz], [-wx, wz], [-wx, -wz]];
+  g = G('VW-TIR-130', V(0, 0, 0)); for (const [x, z] of wheelPos) g.add(rX(cyl(wr, wr, DES.tire_width, M.rubber, 32, x, ay, z), Math.PI / 2));
+  g = G('VW-WHL-120', V(0, 0, 0));
+  for (const [x, z] of wheelPos) {
+    const sg = Math.sign(z), face = z + sg * (DES.tire_width / 2 + 0.2);
+    g.add(rX(cyl(9, 9, 0.8, paintRim(variant), 28, x, ay, face), Math.PI / 2), rX(cyl(2.6, 2.6, 1.4, M.chrome, 12, x, ay, face + sg * 0.5), Math.PI / 2));
+    for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2, s = box(1.4, 7, 0.6, M.black, x + Math.cos(a) * 5, ay + Math.sin(a) * 5, face + sg * 0.45); s.rotation.z = a + Math.PI / 2; g.add(s); }
+  }
+  // roller stays, rollers, bearings, screws
+  const rzc = DES.width_rollers / 2 - DES.roller_dia / 2, rxc = HALF_L - DES.roller_dia / 2;
+  g = G('VW-STF-150', V(26, 6, 0)); g.add(box(16, 1.5, 2 * rzc, M.frp, rxc - 2, 7.5, 0));
+  g = G('VW-STR-151', V(-26, 6, 0)); g.add(box(16, 1.5, 2 * rzc, M.frp, -rxc + 2, 7.5, 0));
+  g = G('VW-ROL-140', V(0, 10, 0)); for (const x of [rxc, -rxc]) for (const s of [-1, 1]) g.add(cyl(6.5, 6.5, 7, M.pom, 24, x, 4, s * rzc));
+  g = G('VW-BRG-141', V(0, 16, 0)); for (const x of [rxc, -rxc]) for (const s of [-1, 1]) g.add(cyl(2.6, 2.6, 7.4, M.chrome, 12, x, 4, s * rzc));
+  g = G('VW-SCR-195', V(0, 22, 0)); for (const x of [rxc - 2, -rxc + 2]) for (const z of [-30, 0, 30]) g.add(cyl(1.8, 1.8, 1.4, M.steel, 10, x, 9, z));
+  // body (+ wing), decals
+  g = G(body.pn, V(0, 62, 0));
+  const shell = new THREE.Mesh(bodyShellGeo(kind), paint); shell.castShadow = true; g.add(shell);
+  const can = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 18), M.canopy); can.scale.set(CANOPY.rx, CANOPY.ry, CANOPY.rz); can.position.set(CANOPY.x, kind === 'low' ? 25.5 : CANOPY.y, 0);
+  if (kind === 'low') can.scale.y = 11; g.add(can);
+  if (body.wing) {
+    g.add(box(WING.chord, 1.6, WING.span, paint, WING.x, WING.y, 0));
+    for (const s of [-1, 1]) { g.add(box(WING.chord + 4, 10, 1.2, paint, WING.x, WING.y - 3, s * (WING.span / 2))); g.add(box(4, 12, 2, M.black, WING.x + 2, WING.y - 7, s * 14)); }
+  }
+  g = G('VW-DCL-196', V(0, 70, 0));
+  const stripe = new THREE.Mesh(bodyShellGeo(kind, 0.14, 0.35), M.white); g.add(stripe);
+  for (const s of [-1, 1]) { const n = box(14, 7, 0.3, M.white, 10, 18, s * (halfWidth(10) + 0.4)); g.add(n); }
+  // batteries (not in BOM — sold separately)
+  g = G('BATTERY', V(0, 44, 0)); g.visible = !!opt.batteries;
+  for (const s of [-1, 1]) { g.add(rZ(cyl(7.25, 7.25, 50.5, std(0x2a5bd7, 0.4, 0.4), 20, 12, 9, s * 7.5), Math.PI / 2)); g.add(rZ(cyl(2.5, 2.5, 1.5, M.steel, 10, 12 + 25.6, 9, s * 7.5), Math.PI / 2)); }
+  // optionally merge each group (factory / track instances)
+  if (opt.merged) for (const [pn, grp] of Object.entries(groups)) { const m = mergeObj(grp); m.name = pn; root.remove(grp); root.add(m); groups[pn] = m; }
+  for (const [pn, grp] of Object.entries(groups)) grp.traverse(o => { if (o.isMesh) o.userData.pn = pn; });
+  return { root, groups, explode, paint, wheels: [groups['VW-TIR-130'], groups['VW-WHL-120']] };
+}
+const RIM_MATS = {};
+function paintRim(v) { return RIM_MATS[v.id] ||= std(v.id === 'KST-LOW' ? 0x222428 : 0xeeeeee, 0.3, 0.4); }
+
+// ============================================================ performance model (DC motor + gear + rolling + aero)
+const TT = D.test_track;
+const CD = { STD: TT.cd, AERO: TT.cd * 1.14, LOW: TT.cd * 0.84 };       // replaced by CFD results when available
+function carMassKg(variant) {
+  let g = 0; for (const p of D.parts) if (!p.ship_only) g += p.weight_g * p.qty;
+  const m = MOTOR[variant.motor]; g += m.mass_g - PART['VW-MTR-180'].weight_g + (BODY[variant.body].wing ? 1.6 : 0);
+  return (g + DES.battery_mass_g * DES.battery_count) / 1000;
+}
+function perf(motorId, gearId, bodyId, massKg) {
+  const mo = MOTOR[motorId], gr = GEAR[gearId].ratio, r = DES.tire_dia / 2000, w0 = mo.no_load_rpm * Math.PI / 30, ts = mo.stall_mNm / 1000;
+  const cd = CD[bodyId] ?? TT.cd, A = TT.frontal_area_m2, m = massKg, g = 9.81;
+  const force = v => { const wm = (v / r) * gr; return Math.max(0, ts * (1 - wm / w0)) * gr * TT.eta_drive / r - TT.crr * m * g - 0.5 * TT.rho * cd * A * v * v; };
+  let v = 0, t = 0; const dt = 0.002, curve = [[0, 0]]; let t90 = null;
+  const vNoLoad = w0 / gr * r;
+  // terminal speed by bisection
+  let lo = 0, hi = vNoLoad; for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; force(mid) > 0 ? lo = mid : hi = mid; }
+  const vmax = lo;
+  while (t < 3) { v += force(v) / m * dt; t += dt; if (t90 === null && v >= 0.9 * vmax) t90 = t; if (Math.round(t / dt) % 25 === 0) curve.push([t, v]); }
+  const vAvg = vmax * TT.corner_factor;
+  const wm = vmax / r * gr, amps = mo.no_load_A + (mo.stall_A - mo.no_load_A) * (1 - wm / w0);
+  return { vmax, kmh: vmax * 3.6, t90: t90 ?? 3, lap: TT.lap_m / vAvg, amps, curve, cd, runtime_min: 2000 / 1000 / amps * 60 * 0.6 };
+}
+
+// ============================================================ 2D lattice-Boltzmann CFD (D2Q9, BGK) on the car side silhouette
+// Car frame of reference: air enters from the left at U, the ground moves at U (rolling road). Forces by momentum exchange.
+const LBM = (() => {
+  const NX = 320, NY = 120, DX = 1.4;                          // cells, mm per cell
+  const U = 0.08, TAU = 0.55, NU = (TAU - 0.5) / 3, OMEGA = 1 / TAU;
+  const CX = [0, 1, 0, -1, 0, 1, -1, -1, 1], CY = [0, 0, 1, 0, -1, 1, 1, -1, -1], W = [4 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 36, 1 / 36, 1 / 36, 1 / 36], OPP = [0, 3, 4, 1, 2, 7, 8, 5, 6];
+  const N = NX * NY, f = new Float32Array(9 * N), ft = new Float32Array(9 * N), solid = new Uint8Array(N);
+  const ux = new Float32Array(N), uy = new Float32Array(N), rho = new Float32Array(N);
+  const X0 = 70;                                               // nose position (cells from inlet)
+  let body = 'STD', steps = 0, fx = 0, fy = 0, cdAvg = 0, clAvg = 0, hCells = 1, lCells = 1;
+  const results = {};
+  const eq = (i, r, u, v) => { const cu = 3 * (CX[i] * u + CY[i] * v); return W[i] * r * (1 + cu + 0.5 * cu * cu - 1.5 * (u * u + v * v)); };
+  function inside(xmm, ymm, bid) {
+    const b = BODY[bid], kind = b.profile, top = TOP[kind];
+    if (Math.abs(xmm) <= HALF_L && ymm >= DES.ground && ymm <= top(xmm)) return true;
+    for (const wx of [DES.wheelbase / 2, -DES.wheelbase / 2]) if ((xmm - wx) ** 2 + (ymm - DES.tire_dia / 2) ** 2 <= (DES.tire_dia / 2) ** 2) return true;
+    const cy = kind === 'low' ? 25.5 : CANOPY.y, ry = kind === 'low' ? 11 : CANOPY.ry;
+    if (((xmm - CANOPY.x) / CANOPY.rx) ** 2 + ((ymm - cy) / ry) ** 2 <= 1) return true;
+    if (b.wing) {
+      if (Math.abs(xmm - WING.x) <= WING.chord / 2 && Math.abs(ymm - WING.y) <= 1.2) return true;   // wing (2D section)
+      if (Math.abs(xmm - (WING.x + 2)) <= 2 && ymm >= 30 && ymm <= WING.y) return true;              // strut
+    }
+    return false;
+  }
+  function setBody(bid) {
+    body = bid; solid.fill(0); let maxY = 0, minX = 1e9, maxX = -1e9;
+    for (let j = 1; j < NY; j++) for (let i = 0; i < NX; i++) {
+      const xmm = HALF_L - (i - X0 + 0.5) * DX, ymm = (j - 0.5) * DX;   // mirrored: nose faces the inlet
+      if (inside(xmm, ymm, bid)) { solid[j * NX + i] = 1; maxY = Math.max(maxY, j); minX = Math.min(minX, i); maxX = Math.max(maxX, i); }
+    }
+    hCells = maxY; lCells = maxX - minX + 1; reset();
+  }
+  function reset() {
+    for (let k = 0; k < N; k++) for (let i = 0; i < 9; i++) f[i * N + k] = eq(i, 1, solid[k] ? 0 : U, 0);
+    steps = 0; cdAvg = 0; clAvg = 0;
+  }
+  function step() {
+    // collide
+    for (let k = 0; k < N; k++) {
+      if (solid[k]) continue;
+      let r = 0, u = 0, v = 0;
+      for (let i = 0; i < 9; i++) { const fi = f[i * N + k]; r += fi; u += fi * CX[i]; v += fi * CY[i]; }
+      u /= r; v /= r; rho[k] = r; ux[k] = u; uy[k] = v;
+      for (let i = 0; i < 9; i++) { const o = i * N + k; f[o] += OMEGA * (eq(i, r, u, v) - f[o]); }
+    }
+    // stream (push) with bounce-back on the car, moving-wall bounce-back on the ground, free-slip top
+    let Fx = 0, Fy = 0;
+    for (let j = 0; j < NY; j++) for (let x = 0; x < NX; x++) {
+      const k = j * NX + x; if (solid[k]) continue;
+      for (let i = 0; i < 9; i++) {
+        const fi = f[i * N + k]; let xn = x + CX[i], yn = j + CY[i];
+        if (xn < 0 || xn >= NX) continue;                        // inlet / outlet set below
+        if (yn >= NY) { ft[(i === 2 ? 4 : i === 5 ? 8 : 7) * N + (j * NX + xn)] = fi; continue; }   // free-slip top: mirror cy
+        if (yn < 0) { ft[OPP[i] * N + k] = fi - 6 * W[i] * rho[k] * (CX[i] * U); continue; }        // moving ground
+        const kn = yn * NX + xn;
+        if (solid[kn]) { ft[OPP[i] * N + k] = fi; Fx += 2 * fi * CX[i]; Fy += 2 * fi * CY[i]; continue; }
+        ft[i * N + kn] = fi;
+      }
+    }
+    for (let j = 0; j < NY; j++) {                               // inlet equilibrium, outlet zero-gradient
+      const ki = j * NX, ko = j * NX + NX - 1, kp = ko - 1;
+      for (let i = 0; i < 9; i++) { ft[i * N + ki] = eq(i, 1, U, 0); ft[i * N + ko] = ft[i * N + kp]; }
+    }
+    f.set(ft); for (let k = 0; k < N; k++) if (solid[k]) for (let i = 0; i < 9; i++) f[i * N + k] = 0;
+    steps++; fx = Fx; fy = Fy;
+    const q = 0.5 * U * U, cd = Fx / (q * hCells), cl = Fy / (q * lCells), a = steps < 1500 ? 0.02 : 0.004;
+    if (steps > 300) { cdAvg += (cd - cdAvg) * a; clAvg += (cl - clAvg) * a; }
+    if (steps > 4000 && steps % 200 === 0) { results[body] = { cd: cdAvg, cl: clAvg, steps, h: hCells }; applyToPerf(); }
+  }
+  function applyToPerf() {
+    const ref = results.STD; if (!ref) return;
+    for (const [bid, r] of Object.entries(results)) CD[bid] = TT.cd * (r.cd * r.h) / (ref.cd * ref.h);   // drag-force ratio at equal dynamic pressure (frontal area held fixed in perf)
+  }
+  // ---- rendering
+  const field = document.createElement('canvas'); field.width = NX; field.height = NY;
+  const fctx = field.getContext('2d'), img = fctx.createImageData(NX, NY);
+  const P = 700, px = new Float32Array(P), py = new Float32Array(P), pl = new Float32Array(P); const r0 = rng(7);
+  for (let i = 0; i < P; i++) { px[i] = r0() * NX; py[i] = 1 + r0() * (NY - 2); pl[i] = r0() * 200; }
+  function sample(arr, x, y) { const i = clamp(Math.floor(x), 0, NX - 2), j = clamp(Math.floor(y), 0, NY - 2), fx_ = x - i, fy_ = y - j, k = j * NX + i; return (arr[k] * (1 - fx_) + arr[k + 1] * fx_) * (1 - fy_) + (arr[k + NX] * (1 - fx_) + arr[k + NX + 1] * fx_) * fy_; }
+  function draw(out, mode, color = '#d23b2f') {
+    const d = img.data, sc = new THREE.Color(color);
+    for (let j = 0; j < NY; j++) for (let x = 0; x < NX; x++) {
+      const k = j * NX + x, o = ((NY - 1 - j) * NX + x) * 4;
+      if (solid[k]) { d[o] = sc.r * 255; d[o + 1] = sc.g * 255; d[o + 2] = sc.b * 255; d[o + 3] = 255; continue; }
+      let r, g, b;
+      if (mode === 'vort') {   // diverging: blue (cw) – neutral grey – orange (ccw)
+        const kx = clamp(x, 1, NX - 2), ky = clamp(j, 1, NY - 2), w = (uy[ky * NX + kx + 1] - uy[ky * NX + kx - 1] - ux[(ky + 1) * NX + kx] + ux[(ky - 1) * NX + kx]) / (2 * U) * 6;
+        const t = clamp(w, -1, 1), m = [46, 52, 60];
+        const c = t < 0 ? [57, 135, 229] : [235, 104, 52], a = Math.abs(t);
+        r = lerp(m[0], c[0], a); g = lerp(m[1], c[1], a); b = lerp(m[2], c[2], a);
+      } else {                 // sequential single hue: dark (still air) -> bright blue (fast)
+        const s = clamp(Math.hypot(ux[k], uy[k]) / (U * 1.45), 0, 1);
+        r = lerp(14, 186, s ** 1.2); g = lerp(18, 220, s); b = lerp(26, 255, s ** 0.8);
+      }
+      d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
+    }
+    fctx.putImageData(img, 0, 0);
+    const c = out.getContext('2d'), W_ = out.width, H_ = out.height, sx = W_ / NX, sy = H_ / NY;
+    c.imageSmoothingEnabled = true; c.drawImage(field, 0, 0, W_, H_);
+    // tracers
+    c.fillStyle = 'rgba(255,255,255,.75)';
+    for (let i = 0; i < P; i++) {
+      const u = sample(ux, px[i], py[i]), v = sample(uy, px[i], py[i]);
+      px[i] += u * 9; py[i] += v * 9; pl[i] -= 1;
+      if (px[i] >= NX - 1 || py[i] < 1 || py[i] > NY - 2 || pl[i] < 0 || solid[Math.floor(py[i]) * NX + Math.floor(px[i])]) { px[i] = pl[i] < 0 ? r0() * NX : r0() * 4; py[i] = 1 + r0() * (NY - 2); pl[i] = 200 + r0() * 400; }
+      c.fillRect(px[i] * sx, H_ - py[i] * sy, Math.max(1.2, sx * 0.5), Math.max(1.2, sx * 0.5));
+    }
+    // moving ground
+    c.fillStyle = '#3a4048'; c.fillRect(0, H_ - sy, W_, sy);
+    c.fillStyle = '#6b737d'; const off = (steps * U * 9 * sx) % 24;
+    for (let x = -24; x < W_ + 24; x += 24) c.fillRect(x + off, H_ - sy, 10, sy);
+  }
+  return {
+    NX, NY, DX, U, NU, setBody, reset, step, draw, results,
+    get steps() { return steps; }, get body() { return body; }, get cd() { return cdAvg; }, get cl() { return clAvg; },
+    get re() { return U * lCells / NU; }, get reReal() { return 6.0 * DES.length / 1000 / 1.5e-5; },
+  };
+})();
+
+// ============================================================ campus scene (metres; x east, z south)
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1f26); scene.fog = new THREE.Fog(0x1a1f26, 140, 280); scene.environment = ENV;
+scene.add(new THREE.HemisphereLight(0xe2ecff, 0x2a2f36, 0.85));
+const sun = new THREE.DirectionalLight(0xfff3e2, 2.0); sun.position.set(40, 80, 30); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -95, right: 95, top: 60, bottom: -60, near: 10, far: 200 }); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.12;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.02, 600);
+const controls = new OrbitControls(camera, canvas); controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.49; controls.minDistance = 0.4; controls.maxDistance = 220;
+
+const labels = [];
+function label(text, p, cls = '', maxDist = 999, onClick = null) {
+  const el = document.createElement('div'); el.className = 'label ' + cls; el.textContent = text; document.body.appendChild(el);
+  if (onClick) el.addEventListener('click', onClick);
+  labels.push({ el, p, maxDist, view: 'campus' }); return el;
+}
+const OFFICE = { x0: -80, x1: -6, z0: -42, z1: 42 }, FAC = { x0: 6, x1: 84, z0: -42, z1: 42 };
+const MM = 0.001;   // car model units -> metres
+
+// ---------------------------------------------------------------- ground, buildings
+{
+  const tex = canvasTex(1700, 1000, (g, W, H) => {
+    const k = W / 170, P = (x, z) => [(x + 85) * k, (z + 50) * k];
+    g.fillStyle = '#30353b'; g.fillRect(0, 0, W, H);
+    // office carpet
+    { const [a, b] = P(OFFICE.x0, OFFICE.z0), [c, d] = P(OFFICE.x1, OFFICE.z1); g.fillStyle = '#36404c'; g.fillRect(a, b, c - a, d - b); }
+    // factory epoxy
+    { const [a, b] = P(FAC.x0, FAC.z0), [c, d] = P(FAC.x1, FAC.z1); g.fillStyle = '#4c5359'; g.fillRect(a, b, c - a, d - b); }
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 1.5;
+    for (let x = FAC.x0; x <= FAC.x1; x += 6) { const [a, b] = P(x, FAC.z0), [, d] = P(x, FAC.z1); g.beginPath(); g.moveTo(a, b); g.lineTo(a, d); g.stroke(); }
+    // walkways (green) and lines (yellow) in the factory
+    g.fillStyle = 'rgba(70,170,110,.5)';
+    for (const z of [-19.5, 8.5, 19.5]) { const [a, b] = P(FAC.x0 + 1, z - 0.9), [c, d] = P(FAC.x1 - 1, z + 0.9); g.fillRect(a, b, c - a, d - b); }
+    g.strokeStyle = '#f2c230'; g.lineWidth = 4;
+    const zone = (x0, z0, x1, z1, col = '#f2c230') => { const [a, b] = P(x0, z0), [c, d] = P(x1, z1); g.strokeStyle = col; g.strokeRect(a, b, c - a, d - b); };
+    zone(8, -41, 76, -22); zone(8, -17.5, 64, -9); zone(10, -3.2, 38, 3.2); zone(8, 10, 46, 17); zone(8, 21, 34, 41); zone(48, 21, 83, 41);
+    // office corridor
+    g.fillStyle = 'rgba(255,255,255,.06)'; { const [a, b] = P(-6, -10), [c, d] = P(6, 10); g.fillRect(a, b, c - a, d - b); }
+    g.fillStyle = 'rgba(255,255,255,.04)'; for (const z of [-20.5, 21]) { const [a, b] = P(OFFICE.x0, z - 1), [c, d] = P(OFFICE.x1, z + 1); g.fillRect(a, b, c - a, d - b); }
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(170, 100), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const out = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), std(0x24292f, 0, 1)); out.rotation.x = -Math.PI / 2; out.position.y = -0.02; scene.add(out);
+  // office glass walls + factory walls
+  for (const [x0, x1, z0, z1] of [[OFFICE.x0, OFFICE.x1, OFFICE.z0, OFFICE.z0], [OFFICE.x0, OFFICE.x1, OFFICE.z1, OFFICE.z1], [OFFICE.x0, OFFICE.x0, OFFICE.z0, OFFICE.z1]]) {
+    const len = Math.hypot(x1 - x0, z1 - z0), w = new THREE.Mesh(new THREE.PlaneGeometry(len, 4), M.glass);
+    w.position.set((x0 + x1) / 2, 2, (z0 + z1) / 2); w.rotation.y = x0 === x1 ? Math.PI / 2 : 0; scene.add(w);
+  }
+  staticMerge(scene, g => {
+    for (let x = OFFICE.x0; x <= OFFICE.x1; x += 8) for (const z of [OFFICE.z0, OFFICE.z1]) g.add(box(0.25, 4, 0.25, M.grey, x, 2, z));
+    for (let z = OFFICE.z0; z <= OFFICE.z1; z += 8) g.add(box(0.25, 4, 0.25, M.grey, OFFICE.x0, 2, z));
+    g.add(box(OFFICE.x1 - OFFICE.x0, 0.2, 0.3, M.grey, (OFFICE.x0 + OFFICE.x1) / 2, 4, OFFICE.z0), box(OFFICE.x1 - OFFICE.x0, 0.2, 0.3, M.grey, (OFFICE.x0 + OFFICE.x1) / 2, 4, OFFICE.z1));
+    // factory walls (north & east tall, others low)
+    g.add(box(FAC.x1 - FAC.x0, 9, 0.4, M.light, (FAC.x0 + FAC.x1) / 2, 4.5, FAC.z0), box(0.4, 9, FAC.z1 - FAC.z0, M.light, FAC.x1, 4.5, 0));
+    for (let x = FAC.x0; x <= FAC.x1; x += 12) g.add(box(0.5, 9.5, 0.5, M.blue, x, 4.75, FAC.z0 + 0.3));
+    g.add(box(FAC.x1 - FAC.x0, 0.4, 0.4, M.blue, (FAC.x0 + FAC.x1) / 2, 9.4, FAC.z0 + 0.3));
+    // corridor bridge office <-> factory
+    g.add(box(12, 0.15, 20, M.grey, 0, 0.07, 0));
+    for (const z of [-10, 10]) g.add(box(12, 3.2, 0.15, M.light, 0, 1.6, z));
+  });
+  const signTex = canvasTex(1024, 128, (g, W, H) => { g.fillStyle = '#121820'; g.fillRect(0, 0, W, H); g.fillStyle = '#ff8a3d'; g.fillRect(0, H - 10, W, 10); g.fillStyle = '#fff'; g.font = 'bold 64px sans-serif'; g.textBaseline = 'middle'; g.fillText('VELO WORKS  ·  PLANT 1', 40, H / 2); });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(24, 3), new THREE.MeshBasicMaterial({ map: signTex })); sign.position.set(45, 6.5, FAC.z0 + 0.25); scene.add(sign);
+}
+
+// ---------------------------------------------------------------- screen textures for office monitors
+const SCREENS = {
+  cad: canvasTex(256, 160, (g, W, H) => { g.fillStyle = '#0d1520'; g.fillRect(0, 0, W, H); g.strokeStyle = '#59a6ff'; g.lineWidth = 1.5; const top = TOP.std; g.beginPath(); for (let x = -79; x <= 79; x += 2) { const px = 20 + (79 - x) / 158 * 210, py = 120 - top(x) * 2.2; x === -79 ? g.moveTo(px, py) : g.lineTo(px, py); } g.stroke(); for (const cx of [64, 177]) { g.beginPath(); g.arc(cx, 120 - 28, 28, 0, 7); g.stroke(); } g.strokeStyle = '#ff8a3d'; g.beginPath(); g.moveTo(20, 140); g.lineTo(230, 140); g.stroke(); g.fillStyle = '#ff8a3d'; g.font = '10px sans-serif'; g.fillText('158.0', 112, 154); }),
+  code: canvasTex(256, 160, (g, W, H) => { g.fillStyle = '#10131a'; g.fillRect(0, 0, W, H); const r = rng(3), cols = ['#7ee8ac', '#8cbcf5', '#ffd27a', '#c9ced4', '#ff9a93']; for (let y = 8; y < H; y += 9) { let x = 8 + Math.floor(r() * 4) * 10; while (x < W - 20 && r() > 0.18) { const w = 10 + r() * 40; g.fillStyle = cols[Math.floor(r() * 5)]; g.fillRect(x, y, w, 4); x += w + 6; } } }),
+  sheet: canvasTex(256, 160, (g, W, H) => { g.fillStyle = '#f4f6f8'; g.fillRect(0, 0, W, H); g.strokeStyle = '#cfd5dc'; for (let x = 0; x < W; x += 32) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); } for (let y = 0; y < H; y += 12) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); } g.fillStyle = '#2f6fb3'; g.fillRect(0, 0, W, 12); const r = rng(5); g.fillStyle = '#333'; for (let y = 16; y < H; y += 12) for (let x = 4; x < W; x += 32) g.fillRect(x, y + 3, 6 + r() * 20, 4); }),
+  dash: canvasTex(256, 160, (g, W, H) => { g.fillStyle = '#121820'; g.fillRect(0, 0, W, H); const r = rng(9); for (let i = 0; i < 9; i++) { const h = 20 + r() * 90; g.fillStyle = i === 6 ? '#fab219' : '#3987e5'; g.fillRect(16 + i * 25, 140 - h, 16, h); } g.strokeStyle = '#e8ecf1'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(10, 50); g.lineTo(246, 50); g.stroke(); }),
+};
+const SCREEN_MAT = Object.fromEntries(Object.entries(SCREENS).map(([k, t]) => [k, new THREE.MeshBasicMaterial({ map: t })]));
+const cfdScreenTex = new THREE.CanvasTexture(Object.assign(document.createElement('canvas'), { width: 640, height: 240 })); cfdScreenTex.colorSpace = THREE.SRGBColorSpace;
+SCREEN_MAT.cfd = new THREE.MeshBasicMaterial({ map: cfdScreenTex });
+const DEPT_SCREEN = { EXP: 'dash', PMK: 'dash', DSN: 'cad', MEC: 'cad', ELE: 'code', CAE: 'cfd', QA: 'dash', PE: 'cad', PUR: 'sheet', SCM: 'sheet', SAL: 'sheet', CS: 'dash', FIN: 'sheet', HR: 'sheet', LEG: 'sheet', IT: 'code' };
+const DEPT_COLOR = { EXP: 0x8c6be8, PMK: 0xe87ba4, DSN: 0xff8a3d, MEC: 0x3987e5, ELE: 0x1baf7a, CAE: 0x56c2e6, PRT: 0xc98500, QA: 0xe34948, PE: 0x6250d6, MFG: 0x2f6fb3, PUR: 0x9aa3ad, SCM: 0xd95926, SAL: 0x199e70, CS: 0xeda100, FIN: 0x4a5562, HR: 0xb0789e, LEG: 0x7d8796, IT: 0x2a7de1 };
+
+// ---------------------------------------------------------------- people
+const personGeo = { body: new THREE.CapsuleGeometry(0.2, 0.55, 4, 10), head: new THREE.SphereGeometry(0.13, 14, 10) };
+const skin = std(0xd8b49a, 0, 0.7), PERSON_MATS = {};
+function person(g, x, z, color, seated = true, rot = 0) {
+  const mat = PERSON_MATS[color] ||= std(color, 0.05, 0.7);
+  const b = new THREE.Mesh(personGeo.body, mat), h = new THREE.Mesh(personGeo.head, skin), y0 = seated ? 0.45 : 0.55;
+  b.position.set(x, y0 + 0.47, z); h.position.set(x + Math.sin(rot) * 0.02, y0 + 1.05, z + Math.cos(rot) * 0.02);
+  b.castShadow = h.castShadow = true; g.add(b, h);
+}
+
+// ---------------------------------------------------------------- office: department zones
+const ZONES = [];
+{
+  const depts = ['EXP', 'PMK', 'DSN', 'MEC', 'ELE', 'CAE', 'QA', 'PE', 'PUR', 'SCM', 'SAL', 'CS', 'FIN', 'HR', 'LEG', 'IT'];
+  const cols = 4, rows = 4, x0 = OFFICE.x0 + 2, w = (OFFICE.x1 - OFFICE.x0 - 4) / cols, z0 = -19.5, h = 39 / rows;
+  depts.forEach((id, i) => {
+    const cx = x0 + w * (i % cols) + w / 2, cz = z0 + h * Math.floor(i / cols) + h / 2, d = DEPT[id];
+    const seats = Math.min(d.hc, 12), deskRows = Math.ceil(seats / 8);
+    const screens = [];
+    staticMerge(scene, g => {
+      g.add(box(w - 1.2, 0.02, h - 1.2, std(DEPT_COLOR[id], 0, 0.95, { transparent: true, opacity: 0.18 }), cx, 0.01, cz));
+      for (let r = 0; r < deskRows; r++) for (let c = 0; c < 2; c++) {
+        const dx = cx - 3.2 + c * 6.4, dz = cz - (deskRows - 1) * 1.1 + r * 2.2;
+        g.add(box(4.8, 0.05, 1.4, M.wood, dx, 0.74, dz));
+        for (const lx of [-2.3, 2.3]) for (const lz of [-0.6, 0.6]) g.add(box(0.05, 0.72, 0.05, M.grey, dx + lx, 0.36, dz + lz));
+        g.add(box(4.8, 0.35, 0.03, M.grey, dx, 0.95, dz));
+        for (let s = 0; s < 2; s++) for (const side of [-1, 1]) {
+          const sx = dx - 1.2 + s * 2.4, sz = dz + side * 0.42;
+          g.add(box(0.55, 0.34, 0.03, M.black, sx, 1.0, sz - side * 0.05), box(0.08, 0.18, 0.08, M.dark, sx, 0.85, sz - side * 0.05));
+          screens.push([sx, 1.0, sz - side * 0.068, side]);
+          g.add(box(0.5, 0.06, 0.5, M.black, sx, 0.48, sz + side * 0.55), box(0.5, 0.5, 0.06, M.black, sx, 0.75, sz + side * 0.8));
+        }
+      }
+    });
+    // screens (shared texture)
+    const sm = SCREEN_MAT[DEPT_SCREEN[id]];
+    const geoms = screens.map(([x, y, z, s]) => { const pg = new THREE.PlaneGeometry(0.5, 0.29); pg.rotateY(s > 0 ? 0 : Math.PI); pg.translate(x, y, z); return pg; });
+    if (geoms.length) scene.add(new THREE.Mesh(mergeGeometries(geoms), sm));
+    // people at the desks
+    const pg = new THREE.Group(); let n = 0;
+    for (const [x, , z, s] of screens) { if (n++ >= seats) break; person(pg, x, z + s * 0.62, DEPT_COLOR[id], true, s > 0 ? Math.PI : 0); }
+    scene.add(mergeObj(pg));
+    const lp = V(cx, 2.6, cz);
+    ZONES.push({ id, cx, cz, w, h });
+    label(`${d.name}（${d.hc}）`, lp, 'dept', 175, () => openDept(id));
+  });
+}
+
+// ---------------------------------------------------------------- office: special rooms (north strip)
+// design review room with a large LED wall fed by the studio turntable render target
+const DR_RT = new THREE.WebGLRenderTarget(1024, 440, { samples: 4 }); DR_RT.texture.colorSpace = THREE.SRGBColorSpace;
+{
+  const x = -68, z = -31;
+  staticMerge(scene, g => {
+    g.add(box(22, 0.03, 18, M.carpet, x, 0.015, z), box(7.6, 3.5, 0.3, M.black, x, 2.1, -41.4));
+    g.add(box(6, 0.06, 2.4, M.wood, x, 0.76, z + 1)); for (const sx of [-2.8, 2.8]) for (const sz of [-1, 1]) g.add(box(0.06, 0.74, 0.06, M.grey, x + sx, 0.37, z + 1 + sz));
+    for (let i = 0; i < 6; i++) for (const s of [-1, 1]) g.add(box(0.5, 0.06, 0.5, M.black, x - 2.5 + i, 0.48, z + 1 + s * 1.7));
+    for (const sx of [-11, 11]) g.add(box(0.12, 3, 18, M.light, x + sx, 1.5, z));
+  });
+  const led = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 3.1), new THREE.MeshBasicMaterial({ map: DR_RT.texture })); led.position.set(x, 2.15, -41.2); scene.add(led);
+  const pg = new THREE.Group(); for (let i = 0; i < 6; i++) person(pg, x - 2.5 + i, z + (i % 2 ? 2.7 : -0.7), [0xff8a3d, 0x3987e5, 0xe34948, 0x6250d6, 0x1baf7a, 0xe87ba4][i], true, i % 2 ? Math.PI : 0); scene.add(mergeObj(pg));
+  label('デザインレビュー室（DR5 準備中）', V(x, 4.2, -40), '', 160);
+}
+// CFD / simulation room
+{
+  const x = -47, z = -31;
+  staticMerge(scene, g => { g.add(box(20, 0.03, 18, M.carpet, x, 0.015, z), box(5.6, 2.2, 0.25, M.black, x, 1.9, -41.4)); for (const sx of [-10]) g.add(box(0.12, 3, 18, M.light, x + sx, 1.5, z)); for (let i = 0; i < 3; i++) g.add(box(2.6, 0.05, 1.2, M.wood, x - 5 + i * 5, 0.74, z + 2)); });
+  const s = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 2.02), SCREEN_MAT.cfd); s.position.set(x, 1.95, -41.24); scene.add(s);
+  const pg = new THREE.Group(); for (let i = 0; i < 3; i++) person(pg, x - 5 + i * 5, z + 2.7, DEPT_COLOR.CAE, true, Math.PI); scene.add(mergeObj(pg));
+  label('CAE・空力解析室（ライブ CFD）', V(x, 3.6, -40), '', 160);
+}
+// test course room (3-lane course with lane changer)
+const TRACK = (() => {
+  const cx = -21, cz = -31, W = 14.55, H = 8, r = 1.8, laneW = 0.115, wallH = 0.05, baseY = 0.08;
+  // centre path: rounded rectangle, sampled
+  const pts = [];
+  const seg = (ax, az, bx, bz, n) => { for (let i = 0; i < n; i++) pts.push([lerp(ax, bx, i / n), lerp(az, bz, i / n)]); };
+  const arc = (ox, oz, a0, a1, n) => { for (let i = 0; i < n; i++) { const a = lerp(a0, a1, i / n); pts.push([ox + Math.cos(a) * r, oz + Math.sin(a) * r]); } };
+  const hx = W / 2 - r, hz = H / 2 - r;
+  seg(cx - hx, cz - H / 2, cx + hx, cz - H / 2, 120); arc(cx + hx, cz - hz, -Math.PI / 2, 0, 40);
+  seg(cx + W / 2, cz - hz, cx + W / 2, cz + hz, 60); arc(cx + hx, cz + hz, 0, Math.PI / 2, 40);
+  seg(cx + hx, cz + H / 2, cx - hx, cz + H / 2, 120); arc(cx - hx, cz + hz, Math.PI / 2, Math.PI, 40);
+  seg(cx - W / 2, cz + hz, cx - W / 2, cz - hz, 60); arc(cx - hx, cz - hz, Math.PI, 1.5 * Math.PI, 40);
+  const n = pts.length, cum = [0];
+  for (let i = 1; i <= n; i++) { const a = pts[i - 1], b = pts[i % n]; cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+  const L = cum[n];
+  const LC = [0.12, 0.22];          // lane-changer section (fraction of the lap, on the north straight)
+  const laneOff = k => (k - 1) * laneW * 1.15;
+  function at(s, lane) {             // -> {x, y, z, yaw}
+    s = mod(s, L); let i = 0; while (cum[i + 1] < s) i++;
+    const a = pts[i], b = pts[(i + 1) % n], f = (s - cum[i]) / (cum[i + 1] - cum[i]);
+    const x = lerp(a[0], b[0], f), z = lerp(a[1], b[1], f), dx = b[0] - a[0], dz = b[1] - a[1], ln = Math.hypot(dx, dz);
+    const nx = dz / ln, nz = -dx / ln; // outward normal (path is clockwise in screen space)
+    const u = s / L; let off = laneOff(lane), y = baseY;
+    if (u > LC[0] && u < LC[1]) {
+      const t = (u - LC[0]) / (LC[1] - LC[0]), tgt = lane === 2 ? laneOff(0) : laneOff(lane + 1);
+      off = lerp(laneOff(lane), tgt, smooth(t)); if (lane === 2) y += Math.sin(Math.PI * t) * 0.13;   // outer lane crosses over the bridge
+    }
+    return { x: x + nx * off, y, z: z + nz * off, yaw: Math.atan2(-dz, dx) };
+  }
+  // geometry: lane floors + walls
+  const laneMats = [0x5b6f8c, 0x6d5b8c, 0x5b8c75].map(c => std(c, 0.05, 0.55, { side: THREE.DoubleSide }));
+  for (let k = 0; k < 3; k++) {
+    const pos = [], idx = [];
+    for (let i = 0; i <= n; i++) {
+      const s = cum[i]; {
+        const p = at(s, k), q = at(s + 0.05, k), dx = q.x - p.x, dz = q.z - p.z, ln = Math.hypot(dx, dz) || 1, nx = dz / ln, nz = -dx / ln;
+        pos.push(p.x - nx * laneW * 0.58, baseY + 0.002, p.z - nz * laneW * 0.58, p.x + nx * laneW * 0.58, baseY + 0.002, p.z + nz * laneW * 0.58);
+      }
+      if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+    }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setIndex(idx); gg.computeVertexNormals();
+    const m = new THREE.Mesh(gg, laneMats[k]); m.receiveShadow = true; scene.add(m);
+  }
+  const wallGeo = [];
+  for (const off of [-1.5, -0.5, 0.5, 1.5].map(v => v * laneW * 1.15)) {
+    for (let i = 0; i < n; i += 2) {
+      const s = cum[i], u = s / L; if (u > LC[0] && u < LC[1]) continue;
+      const a = at(s, 1), b = at(cum[(i + 2) % n] || L, 1), dx = b.x - a.x, dz = b.z - a.z, ln = Math.hypot(dx, dz) || 1, nx = dz / ln, nz = -dx / ln;
+      const gb = new THREE.BoxGeometry(ln, wallH, 0.008); gb.rotateY(Math.atan2(-dz, dx)); gb.translate((a.x + b.x) / 2 + nx * off, baseY + wallH / 2, (a.z + b.z) / 2 + nz * off); wallGeo.push(gb);
+    }
+  }
+  scene.add(new THREE.Mesh(mergeGeometries(wallGeo), M.white));
+  // lane changer bridge
+  {
+    const pos = [], idx = [], N = 40;
+    for (let i = 0; i <= N; i++) {
+      const u = lerp(LC[0], LC[1], i / N), p = at(u * L, 2), q = at(u * L + 0.05, 2), dx = q.x - p.x, dz = q.z - p.z, ln = Math.hypot(dx, dz) || 1, nx = dz / ln, nz = -dx / ln;
+      pos.push(p.x - nx * laneW / 2, p.y - 0.002, p.z - nz * laneW / 2, p.x + nx * laneW / 2, p.y - 0.002, p.z + nz * laneW / 2);
+      if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+    }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gg.setIndex(idx); gg.computeVertexNormals();
+    scene.add(new THREE.Mesh(gg, std(0xd9dde2, 0.1, 0.4, { side: THREE.DoubleSide })));
+  }
+  staticMerge(scene, g => { g.add(box(W + 3, baseY, H + 3, std(0x23282f, 0, 0.9), cx, baseY / 2, cz)); g.add(box(3, 0.9, 0.8, M.wood, cx, 0.45, cz + H / 2 + 2.2)); for (let i = 0; i < 4; i++) g.add(box(1.6, 0.05, 0.8, M.wood, cx - 6 + i * 4, 0.74, cz + H / 2 + 3.4)); });
+  const pg = new THREE.Group(); for (let i = 0; i < 5; i++) person(pg, cx - 7 + i * 3.5, cz + H / 2 + 1.6, [0x3987e5, 0xe34948, 0x1baf7a, 0xff8a3d, 0x56c2e6][i], false, Math.PI); scene.add(mergeObj(pg));
+  // scoreboard
+  const board = canvasTex(512, 256, () => {}); const bm = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.6), new THREE.MeshBasicMaterial({ map: board })); bm.position.set(cx + 4.5, 1.6, cz + H / 2 + 2.21); scene.add(bm);
+  label('テストコース（3 レーン・社内 DV-06）', V(cx, 1.8, cz - H / 2), '', 140);
+  return { at, L, cx, cz, W, H, board };
+})();
+
+// ---------------------------------------------------------------- office: labs (south strip)
+const PRINTERS = [];
+{
+  // prototype lab
+  const x = -68, z = 31;
+  staticMerge(scene, g => {
+    g.add(box(22, 0.03, 18, std(0x3a3f46, 0, 0.9), x, 0.015, z));
+    for (let i = 0; i < 6; i++) { const px = x - 7.5 + (i % 3) * 3.2, pz = z - 4 + Math.floor(i / 3) * 3; g.add(box(1.0, 0.8, 1.0, M.grey, px, 0.4, pz), box(1.0, 0.9, 0.06, M.light, px, 1.25, pz - 0.47), box(0.06, 0.9, 1, M.light, px - 0.47, 1.25, pz), box(0.06, 0.9, 1, M.light, px + 0.47, 1.25, pz)); }
+    g.add(box(3.2, 1.0, 2.2, M.blue, x + 6, 0.5, z - 3), box(3.4, 0.2, 2.4, M.grey, x + 6, 1.4, z - 3));   // CNC router
+    g.add(box(2.2, 1.0, 1.4, M.dark, x + 6, 0.5, z + 2.5));                                                   // laser cutter
+    for (let i = 0; i < 2; i++) g.add(box(3, 0.05, 1.2, M.wood, x - 7 + i * 4, 0.9, z + 6));
+  });
+  for (let i = 0; i < 6; i++) { const px = x - 7.5 + (i % 3) * 3.2, pz = z - 4 + Math.floor(i / 3) * 3; const head = box(0.12, 0.08, 0.12, M.orange, px, 1.25, pz); scene.add(head); const part = box(0.18, 0.001, 0.08, std([0xd23b2f, 0x1f5fbf, 0xe8b10e][i % 3], 0, 0.5), px, 0.81, pz); scene.add(part); PRINTERS.push({ head, part, px, pz, ph: i * 1.7 }); }
+  const pg = new THREE.Group(); for (let i = 0; i < 4; i++) person(pg, x - 7 + i * 2.2, z + 7.2, DEPT_COLOR.PRT, false, Math.PI); scene.add(mergeObj(pg));
+  label('試作ラボ（3D プリンタ ×6・CNC・レーザー）', V(x, 3, z - 8), '', 140, () => openDept('PRT'));
+  // electronics lab
+  const ex = -47, ez = 31;
+  staticMerge(scene, g => {
+    g.add(box(20, 0.03, 18, std(0x3a3f46, 0, 0.9), ex, 0.015, ez));
+    for (let i = 0; i < 4; i++) { const bx_ = ex - 6 + (i % 2) * 8, bz = ez - 3 + Math.floor(i / 2) * 5; g.add(box(4, 0.05, 1.2, M.light, bx_, 0.9, bz), box(0.6, 0.35, 0.4, M.dark, bx_ - 1.2, 1.1, bz - 0.2), box(0.5, 0.25, 0.35, M.blue, bx_ + 0.6, 1.05, bz - 0.2)); }
+    g.add(box(3, 2.4, 3, std(0x8a929b, 0.5, 0.4), ex + 6, 1.2, ez + 4.5));    // EMC shield box
+  });
+  const pg2 = new THREE.Group(); for (let i = 0; i < 4; i++) person(pg2, ex - 6 + (i % 2) * 8, ez - 2.2 + Math.floor(i / 2) * 5, DEPT_COLOR.ELE, true, Math.PI); scene.add(mergeObj(pg2));
+  label('電気・ファームラボ（EMC 簡易シールド）', V(ex, 3, ez - 8), '', 140);
+  // quality lab: CMM + drop tester + climate chamber
+  const qx = -26, qz = 31;
+  staticMerge(scene, g => {
+    g.add(box(20, 0.03, 18, std(0x3a3f46, 0, 0.9), qx, 0.015, qz));
+    g.add(box(2.4, 0.8, 1.8, std(0x2d2f33, 0.2, 0.3), qx - 5, 0.4, qz - 3)); for (const s of [-1, 1]) g.add(box(0.12, 1.4, 0.12, M.light, qx - 5 + s * 1.1, 1.5, qz - 3)); g.add(box(2.4, 0.15, 0.2, M.light, qx - 5, 2.25, qz - 3));
+    g.add(box(1.4, 2.0, 1.4, M.white, qx + 2, 1.0, qz - 3), box(0.06, 0.8, 0.6, M.glass, qx + 2.71, 1.2, qz - 3));
+    g.add(box(0.8, 2.2, 0.8, M.grey, qx + 6, 1.1, qz - 3), box(0.6, 0.02, 0.6, M.light, qx + 6, 1.0, qz - 2.6));
+    for (let i = 0; i < 3; i++) g.add(box(3, 0.05, 1.2, M.light, qx - 6 + i * 4.5, 0.9, qz + 4));
+  });
+  const pg3 = new THREE.Group(); for (let i = 0; i < 3; i++) person(pg3, qx - 6 + i * 4.5, qz + 4.8, DEPT_COLOR.QA, true, Math.PI); scene.add(mergeObj(pg3));
+  label('品質ラボ（三次元測定機・環境試験・落下試験）', V(qx, 3, qz - 8), '', 140, () => openDept('QA'));
+  // wind tunnel (DV-12 correlation) + lobby showcase
+  const wx = -11, wz = 31;
+  staticMerge(scene, g => { g.add(box(8, 1.2, 1.6, M.glass, wx, 1.4, wz - 4), box(1.6, 2.2, 2.2, M.dark, wx - 4.6, 1.3, wz - 4), box(1.6, 1.6, 1.6, M.grey, wx + 4.6, 1.3, wz - 4), box(8, 0.8, 1.6, M.grey, wx, 0.4, wz - 4)); g.add(box(1.2, 0.9, 1.2, M.white, wx, 0.45, wz + 4)); });
+  label('風洞（CFD 相関 DV-12）', V(wx, 2.6, wz - 4), '', 120);
+  label('ロビー・製品展示', V(wx, 2.0, wz + 4), '', 120);
+}
+
+// ---------------------------------------------------------------- factory: injection molding
+const MOLD = [];
+D.molding.forEach((mc, i) => {
+  const x = 13 + i * 10.5, z = -31, big = mc.tonnage >= 100, L = big ? 6.4 : 5.2;
+  staticMerge(scene, g => {
+    g.add(box(L, 1.0, 1.6, std(0x2f6fb3, 0.3, 0.45), x, 0.5, z), box(L * 0.42, 0.5, 0.5, M.steel, x + L * 0.25, 1.3, z), box(0.7, 0.9, 0.7, M.grey, x + L * 0.42, 1.55, z));
+    g.add(cyl(0.35, 0.18, 0.8, M.light, 12, x + L * 0.42, 2.35, z));                                              // hopper
+    g.add(box(0.25, 1.3, 1.5, M.grey, x - L * 0.05, 1.65, z), box(0.25, 1.3, 1.5, M.grey, x - L * 0.42, 1.65, z));   // fixed platens
+    for (const dy of [-0.5, 0.5]) for (const dz of [-0.55, 0.55]) g.add(rZ(cyl(0.05, 0.05, L * 0.4, M.chrome, 8, x - L * 0.235, 1.65 + dy, z + dz), Math.PI / 2));
+    g.add(box(0.9, 0.9, 0.9, std(0x8a929b, 0.4, 0.4), x - L * 0.23, 0.9, z + 1.4), box(1.2, 0.7, 0.9, M.grey, x - L * 0.23, 0.35, z + 2.6));   // chute + bin
+    g.add(box(0.8, 1.6, 0.4, M.dark, x + L * 0.1, 0.8, z - 1.1));
+  });
+  const moving = box(0.28, 1.2, 1.4, M.orange, x - L * 0.3, 1.65, z); scene.add(moving);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8), std(0x111111, 0, 0.4, { emissive: 0x33ff66, emissiveIntensity: 1.5 })); lamp.position.set(x + L * 0.1, 1.75, z - 1.1); scene.add(lamp);
+  const drops = []; const pm = std(new THREE.Color(mc.color), 0.1, 0.5);
+  for (let k = 0; k < 6; k++) { const d = box(0.12, 0.03, 0.08, pm, x - L * 0.23, -5, z + 1.4); scene.add(d); drops.push(d); }
+  const fill = box(1.1, 0.01, 0.8, pm, x - L * 0.23, 0.45, z + 2.6); scene.add(fill);
+  const p0 = PART[mc.parts[0]];
+  MOLD.push({ mc, x, z, L, moving, lamp, drops, fill, cycle: p0.cycle_s / SCALE, shots: 0, phase: i * 0.37 });
+  label(`${mc.id} ${mc.tonnage}t ${mc.parts.map(pn => PART[pn].name.replace(/（.*?）/g, '')).join('・')}（${p0.cavities}個取り / ${p0.cycle_s}s）`, V(x, 3.2, z), 'small', 30);
+});
+label('射出成形エリア（6 台）', V(43, 5.2, -31), '', 200);
+
+// ---------------------------------------------------------------- factory: SMT line
+const SMT = { boards: [], x0: 10, x1: 62, z: -13.2, y: 0.92 };
+{
+  const n = D.smt.steps.length, span = (SMT.x1 - SMT.x0) / n;
+  staticMerge(scene, g => {
+    g.add(box(SMT.x1 - SMT.x0 + 4, 0.06, 0.5, M.grey, (SMT.x0 + SMT.x1) / 2, 0.88, SMT.z));
+    D.smt.steps.forEach((st, i) => { const x = SMT.x0 + span * (i + 0.5); g.add(box(span * 0.62, 1.5, 1.6, i === 4 ? std(0x6b7078, 0.4, 0.4) : M.white, x, 0.75, SMT.z), box(span * 0.62, 0.12, 1.65, M.blue, x, 1.56, SMT.z)); });
+  });
+  D.smt.steps.forEach((st, i) => label(`${st.id} ${st.name}`, V(SMT.x0 + span * (i + 0.5), 2.0, SMT.z), 'small', 22));
+  SMT.reflow = new THREE.Mesh(new THREE.BoxGeometry(span * 0.6, 0.05, 1.2), M.glow); SMT.reflow.position.set(SMT.x0 + span * 4.5, 1.2, SMT.z); scene.add(SMT.reflow);
+  SMT.aoi = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), std(0x111111, 0, 0.4, { emissive: 0x33aaff, emissiveIntensity: 0 })); SMT.aoi.position.set(SMT.x0 + span * 5.5, 1.75, SMT.z); scene.add(SMT.aoi);
+  const bm = [M.pcb, M.chip];
+  for (let i = 0; i < 10; i++) { const g = new THREE.Group(); g.add(box(0.28, 0.008, 0.12, M.pcb, 0, 0, 0)); for (let k = 0; k < 8; k++) g.add(box(0.012, 0.004, 0.012, M.chip, -0.12 + (k % 4) * 0.08, 0.005, -0.03 + Math.floor(k / 4) * 0.06)); const m = mergeObj(g); m.visible = false; scene.add(m); SMT.boards.push(m); }
+  label('SMT ライン（8 面付け・45 s/パネル）', V((SMT.x0 + SMT.x1) / 2, 3.0, SMT.z), '', 200);
+}
+
+// ---------------------------------------------------------------- factory: assembly line (A10–A90), desktop SCARA robots
+// Real toy-assembly scale: 1.5 m station pitch, 180 mm pallet conveyor, 0.36 m reach SCARAs on 0.86 m benches.
+const ASM = { x0: 14, sp: 1.5, z: 0, y: 0.9, stations: D.assembly.stations };
+const stX = i => ASM.x0 + i * ASM.sp;
+const BENCH_Y = ASM.y - 0.04;
+class Scara {
+  constructor(x, z, facing = 1, k = 0.55) {
+    this.k = k; this.root = new THREE.Group(); this.root.position.set(x, BENCH_Y, z); this.root.scale.setScalar(k); scene.add(this.root);
+    this.root.add(cyl(0.11, 0.13, 0.5, M.white, 16, 0, 0.25, 0), cyl(0.1, 0.1, 0.06, M.dark, 16, 0, 0.53, 0), box(0.3, 0.03, 0.3, M.grey, 0, 0.015, 0));
+    this.j1 = new THREE.Group(); this.j1.position.y = 0.56; this.root.add(this.j1);
+    this.j1.add(box(0.36, 0.09, 0.12, M.white, 0.18, 0, 0), cyl(0.075, 0.075, 0.12, M.dark, 14, 0.36, 0, 0), box(0.12, 0.02, 0.06, M.orange, 0.2, 0.055, 0));
+    this.j2 = new THREE.Group(); this.j2.position.x = 0.36; this.j1.add(this.j2);
+    this.j2.add(box(0.3, 0.07, 0.1, M.white, 0.15, 0, 0), cyl(0.05, 0.05, 0.16, M.dark, 12, 0.3, 0, 0));
+    this.quill = new THREE.Group(); this.quill.position.x = 0.3; this.j2.add(this.quill);
+    this.quill.add(cyl(0.015, 0.015, 0.36, M.chrome, 8, 0, -0.08, 0), box(0.06, 0.03, 0.06, M.dark, 0, -0.27, 0), box(0.012, 0.04, 0.05, M.steel, -0.03, -0.3, 0), box(0.012, 0.04, 0.05, M.steel, 0.03, -0.3, 0));
+    this.tip = new THREE.Group(); this.tip.position.y = -0.29; this.quill.add(this.tip);
+    this.facing = facing; this.base = V(x, BENCH_Y + 0.56 * k, z);
+  }
+  reach(p) {   // planar 2-link IK (robot units) + vertical quill stroke
+    const k = this.k, dx = (p.x - this.base.x) / k, dz = (p.z - this.base.z) / k, L1 = 0.36, L2 = 0.3, d = clamp(Math.hypot(dx, dz), 0.08, L1 + L2 - 0.005);
+    const e = Math.acos(clamp((d * d - L1 * L1 - L2 * L2) / (2 * L1 * L2), -1, 1)) * this.facing, a = Math.atan2(-dz, dx) - Math.atan2(L2 * Math.sin(e), L1 + L2 * Math.cos(e));
+    this.j1.rotation.y = a; this.j2.rotation.y = e; this.quill.position.y = clamp((p.y - this.base.y) / k + 0.29, -0.2, 0.06);
+  }
+}
+const KEYS = [[0, 'home'], [0.14, 'ap'], [0.22, 'p'], [0.3, 'p'], [0.38, 'ap'], [0.58, 'aq'], [0.64, 'q'], [0.72, 'q'], [0.8, 'aq'], [1, 'home']];
+function pp(u, home, pick, place, out) {
+  const pt = { home, p: pick, ap: pick.clone().add(V(0, 0.05, 0)), q: place, aq: place.clone().add(V(0, 0.05, 0)) };
+  for (let i = 0; i < KEYS.length - 1; i++) if (u < KEYS[i + 1][0]) { const f = smooth((u - KEYS[i][0]) / (KEYS[i + 1][0] - KEYS[i][0])); return out.lerpVectors(pt[KEYS[i][1]], pt[KEYS[i + 1][1]], f); }
+  return out.copy(home);
+}
+// one reference car per variant (for carried parts)
+const VARIANTS = D.variants, MIX = ['KST-STD', 'KST-AERO', 'KST-STD', 'KST-LOW'];
+const VAR = Object.fromEntries(VARIANTS.map(v => [v.id, v]));
+const REFCAR = Object.fromEntries(VARIANTS.map(v => [v.id, buildCar(v, { merged: true })]));
+// line pallets (jig plates) and car pools
+const LINE_N = ASM.stations.length;
+const JIG = std(0x2f6fb3, 0.4, 0.4);
+const POOL = Object.fromEntries(VARIANTS.map(v => [v.id, Array.from({ length: LINE_N + 2 }, () => { const c = buildCar(v, { merged: true }); c.root.add(box(172, 5, 112, JIG, 0, -2.5, 0), box(30, 6, 6, M.yellow, -70, 1, 50)); c.root.scale.setScalar(MM); scene.add(c.root); c.root.visible = false; return c; })]));
+const STATION_PARTS = ASM.stations.map(st => D.installs[st.id]);
+staticMerge(scene, g => {
+  const L0 = stX(-1), L1x = stX(LINE_N) + 0.2;
+  g.add(box(L1x - L0, 0.04, 0.18, M.dark, (L0 + L1x) / 2, ASM.y - 0.04, ASM.z), box(L1x - L0, 0.03, 0.02, M.steel, (L0 + L1x) / 2, ASM.y - 0.01, ASM.z - 0.1), box(L1x - L0, 0.03, 0.02, M.steel, (L0 + L1x) / 2, ASM.y - 0.01, ASM.z + 0.1));
+  for (let i = -1; i <= LINE_N; i++) {
+    const x = stX(i);
+    g.add(box(1.36, BENCH_Y - 0.03, 0.55, M.light, x, (BENCH_Y - 0.03) / 2, ASM.z - 0.4), box(1.36, BENCH_Y - 0.03, 0.4, M.light, x, (BENCH_Y - 0.03) / 2, ASM.z + 0.33));
+    g.add(box(1.38, 0.03, 0.58, M.grey, x, BENCH_Y - 0.015, ASM.z - 0.4), box(1.38, 0.03, 0.42, M.grey, x, BENCH_Y - 0.015, ASM.z + 0.33));
+    if (i >= 0 && i < LINE_N) {
+      g.add(box(0.26, 0.025, 0.16, M.yellow, x - 0.16, BENCH_Y + 0.012, ASM.z - 0.5));                            // parts tray
+      for (const sx of [-0.66, 0.66]) g.add(box(0.03, 0.9, 0.03, M.yellow, x + sx, BENCH_Y + 0.45, ASM.z - 0.66)); // guard posts
+      g.add(box(1.36, 0.03, 0.03, M.yellow, x, BENCH_Y + 0.9, ASM.z - 0.66), box(0.5, 0.32, 0.03, M.black, x + 0.35, BENCH_Y + 0.7, ASM.z - 0.66));
+      g.add(cyl(0.025, 0.025, 0.3, M.grey, 8, x + 0.6, BENCH_Y + 1.05, ASM.z - 0.66));                            // andon post
+    }
+  }
+});
+// station andon lights + HMI screens
+const ANDON = ASM.stations.map((st, i) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.07, 12), std(0x111111, 0, 0.4, { emissive: 0x33ff66, emissiveIntensity: 1.4 })); m.position.set(stX(i) + 0.6, BENCH_Y + 1.24, ASM.z - 0.66); scene.add(m); return m; });
+const ROBOTS = [];
+ASM.stations.forEach((st, i) => {
+  label(`${st.id} ${st.name}`, V(stX(i), BENCH_Y + 1.38, ASM.z - 0.66), 'small', 9);
+  const human = st.id === 'A70' || st.id === 'A90';
+  if (st.id === 'A80') return;
+  if (human) { const pg = new THREE.Group(); person(pg, stX(i), ASM.z - 1.0, DEPT_COLOR.MFG, false, 0); scene.add(mergeObj(pg)); return; }
+  const n = /×2/.test(st.resource) ? 2 : 1;
+  for (let k = 0; k < n; k++) {
+    const rb = new Scara(stX(i) + (n === 2 ? (k ? 0.3 : -0.3) : 0), ASM.z - 0.36, k ? -1 : 1);
+    const pns = STATION_PARTS[i].filter((_, j) => j % n === k);
+    const carry = new THREE.Group(), inner = new THREE.Group(); carry.add(inner);
+    for (const pn of pns) { const src = REFCAR['KST-STD'].groups[pn]; if (src) inner.add(src.clone()); }
+    const bb = new THREE.Box3().setFromObject(inner), c = bb.isEmpty() ? V(0, 0, 0) : bb.getCenter(V(0, 0, 0)); inner.position.set(-c.x, bb.isEmpty() ? 0 : -bb.max.y, -c.z);
+    carry.scale.setScalar(MM / rb.k); rb.tip.add(carry); carry.visible = false;
+    rb.carry = carry; rb.pick = V(stX(i) - 0.16 + (n === 2 ? (k ? 0.12 : -0.12) : 0), BENCH_Y + 0.03, ASM.z - 0.5); rb.home = V(stX(i) + (n === 2 ? (k ? 0.18 : -0.18) : 0), ASM.y + 0.1, ASM.z - 0.18);
+    ROBOTS.push({ rb, i });
+  }
+});
+// EOL roller dyno (A80)
+const EOL = { x: stX(7) };
+staticMerge(scene, g => { g.add(box(0.5, 0.22, 0.34, std(0x2d2f33, 0.2, 0.4), EOL.x, BENCH_Y + 0.11, ASM.z - 0.45), box(0.36, 0.24, 0.03, M.black, EOL.x - 0.3, BENCH_Y + 0.4, ASM.z - 0.5)); });
+const eolScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.22), new THREE.MeshBasicMaterial({ map: canvasTex(256, 160, () => {}) })); eolScreen.position.set(EOL.x - 0.3, BENCH_Y + 0.4, ASM.z - 0.483); scene.add(eolScreen);
+const EOL_ROLLERS = []; for (const dx of [-0.041, 0.041]) for (const dz of [-0.04, 0.04]) { const r = rX(cyl(0.008, 0.008, 0.03, M.steel, 10, EOL.x + dx, ASM.y - 0.01, ASM.z + dz), Math.PI / 2); scene.add(r); EOL_ROLLERS.push(r); }
+// packing (A90) → outfeed → palletizer
+const BOXES = []; const boxMat = canvasTex(256, 128, (g, W, H) => { g.fillStyle = '#121820'; g.fillRect(0, 0, W, H); g.fillStyle = '#ff8a3d'; g.fillRect(0, H - 18, W, 18); g.fillStyle = '#fff'; g.font = 'bold 34px sans-serif'; g.fillText('VELO-32', 18, 58); g.font = '20px sans-serif'; g.fillText('KESTREL', 20, 90); });
+const BOXM = new THREE.MeshStandardMaterial({ map: boxMat, roughness: 0.6 });
+for (let i = 0; i < 26; i++) { const b = new THREE.Mesh(boxGeo(0.21, 0.07, 0.13), BOXM); b.castShadow = true; b.visible = false; scene.add(b); BOXES.push(b); }
+const OUTFEED = { x0: stX(8) + 0.7, x1: stX(8) + 7.5, z: ASM.z };
+const PAL = { x: OUTFEED.x1 + 1.2 };
+staticMerge(scene, g => {
+  g.add(box(OUTFEED.x1 - OUTFEED.x0, 0.05, 0.26, M.grey, (OUTFEED.x0 + OUTFEED.x1) / 2, ASM.y - 0.03, ASM.z));
+  for (let x = OUTFEED.x0; x < OUTFEED.x1; x += 0.08) g.add(rX(cyl(0.012, 0.012, 0.24, M.steel, 8, x, ASM.y - 0.005, ASM.z), Math.PI / 2));
+  for (let x = OUTFEED.x0 + 0.3; x < OUTFEED.x1; x += 1.2) for (const z of [-0.12, 0.12]) g.add(box(0.04, ASM.y - 0.05, 0.04, M.grey, x, (ASM.y - 0.05) / 2, ASM.z + z));
+  g.add(box(1.0, 0.55, 0.7, M.white, stX(8) + 2.2, ASM.y + 0.24, ASM.z), box(1.02, 0.08, 0.72, M.orange, stX(8) + 2.2, ASM.y + 0.5, ASM.z));   // shrink tunnel
+  g.add(box(1.2, 0.14, 1.0, M.wood, PAL.x, 0.07, ASM.z));
+  for (const sx of [-0.9, 0.9]) g.add(box(0.12, 2.4, 0.12, M.orange, PAL.x + sx, 1.2, ASM.z - 0.9), box(0.12, 2.4, 0.12, M.orange, PAL.x + sx, 1.2, ASM.z + 0.9));
+  g.add(box(1.92, 0.12, 0.12, M.orange, PAL.x, 2.4, ASM.z - 0.9), box(1.92, 0.12, 0.12, M.orange, PAL.x, 2.4, ASM.z + 0.9));
+});
+const PALLET_STACK = new THREE.Mesh(boxGeo(1.2, 1, 1.0), BOXM); PALLET_STACK.position.set(PAL.x, 0.15, ASM.z); PALLET_STACK.scale.y = 0.001; scene.add(PALLET_STACK);
+label('組立ライン #1（A10–A90・タクト 24 s）', V(stX(4), 2.6, ASM.z), '', 200);
+label('シュリンク・出荷ケース・パレタイズ', V(PAL.x - 2, 2.0, ASM.z), 'small', 60);
+// reserved floor for line #2 (two-shift / second line decision, see SCM capacity)
+staticMerge(scene, g => { for (let x = 44; x <= 74; x += 3) g.add(box(1.5, 0.01, 0.1, M.yellow, x, 0.006, -5.5), box(1.5, 0.01, 0.1, M.yellow, x, 0.006, 5.5)); });
+label('組立ライン #2 増設予定地（W47 能力超過対応・投資審議中）', V(59, 1.2, 0), 'small', 120);
+
+// sub-assembly cells (wheel+tyre press, pinion press, CNC stays)
+const PRESSES = [];
+[['SA-WHL ホイール＋タイヤ圧入', 14], ['SA-MTR ピニオン圧入（モーター）', 24], ['SA-STY ステー CNC ルーター', 36]].forEach(([name, x], i) => {
+  staticMerge(scene, g => { g.add(box(2.4, 0.9, 1.4, M.light, x, 0.45, 13.5), box(0.5, 1.4, 0.5, M.blue, x, 1.6, 13.0), box(0.9, 0.2, 0.6, M.blue, x, 2.25, 13.2)); });
+  const ram = box(0.16, 0.4, 0.16, M.chrome, x, 1.6, 13.4); scene.add(ram); PRESSES.push({ ram, ph: i * 0.9 });
+  const pg = new THREE.Group(); person(pg, x, 14.9, DEPT_COLOR.MFG, false, Math.PI); scene.add(mergeObj(pg));
+  label(name, V(x, 2.7, 13.5), 'small', 30);
+});
+// receiving & incoming inspection, warehouse, shipping
+staticMerge(scene, g => {
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { const x = 11 + c * 5.5, z = 24 + r * 5.5; g.add(box(4.4, 0.08, 1.2, M.orange, x, 0.9, z), box(4.4, 0.08, 1.2, M.orange, x, 1.9, z)); for (const sx of [-2.1, 2.1]) g.add(box(0.08, 2.5, 1.2, M.blue, x + sx, 1.25, z)); for (let k = 0; k < 3; k++) g.add(box(1.1, 0.5, 0.9, std([0x8a6b4a, 0x5d646c, 0x2a5bd7][(r + c + k) % 3], 0, 0.7), x - 1.3 + k * 1.3, 1.2, z)); }
+  g.add(box(3, 0.05, 1.2, M.light, 31, 0.9, 38), box(0.6, 0.4, 0.4, M.dark, 30.4, 1.1, 38));
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) { const x = 52 + c * 6, z = 24 + r * 4.4; for (const lv of [0.1, 1.6, 3.1]) g.add(box(5.2, 0.08, 1.3, M.orange, x, lv, z)); for (const sx of [-2.6, 2.6]) g.add(box(0.1, 4.2, 1.3, M.blue, x + sx, 2.1, z)); for (const lv of [0.1, 1.6, 3.1]) for (let k = 0; k < 2; k++) g.add(box(1.2, 1.0, 1.0, BOXM, x - 1.3 + k * 2.6, lv + 0.55, z)); }
+  g.add(box(13, 3.6, 3.2, M.white, 91, 2.2, 30), box(3, 3, 3, M.blue, 83.5, 1.9, 30), box(0.2, 4, 4, M.grey, FAC.x1 + 0.1, 2, 30));
+  for (const z of [28.2, 31.8]) for (const x of [86, 89, 95]) g.add(rX(cyl(0.55, 0.55, 0.4, M.rubber, 18, x, 0.55, z), Math.PI / 2));
+});
+const pgR = new THREE.Group(); person(pgR, 31, 38.9, DEPT_COLOR.QA, false, Math.PI); person(pgR, 76, 30, DEPT_COLOR.MFG, false, -Math.PI / 2); scene.add(mergeObj(pgR));
+label('受入・受入検査（購入品）', V(20, 3.2, 31), '', 120, () => openDept('PUR'));
+label('完成品倉庫', V(64, 5, 31), '', 140, () => openDept('SCM'));
+label('出荷ドック', V(84, 4.2, 30), 'small', 80);
+
+// AGVs
+const AGVS = [];
+[[[12, -24.5], [74, -24.5], [74, -20.5], [12, -20.5]], [[37, 2.2], [42, 2.2], [42, 20.5], [37, 20.5]], [[12, 20.5], [40, 20.5], [40, 9.5], [12, 9.5]]].forEach((route, ri) => {
+  const path = new THREE.CurvePath(); for (let i = 0; i < route.length; i++) { const a = route[i], b = route[(i + 1) % route.length]; path.add(new THREE.LineCurve3(V(a[0], 0, a[1]), V(b[0], 0, b[1]))); }
+  const len = path.getLength();
+  for (let k = 0; k < 2; k++) { const m = staticMerge(scene, g => { g.add(box(1.2, 0.3, 0.8, M.white, 0, 0.2, 0), box(1.22, 0.05, 0.82, M.orange, 0, 0.34, 0), box(0.9, 0.4, 0.6, std(0x8a6b4a, 0, 0.7), 0, 0.57, 0)); }); AGVS.push({ m, path, len, off: k / 2 + ri * 0.13 }); }
+});
+// walkers
+const WALKERS = [];
+[[[-60, -20.5], [-10, -20.5]], [[-60, 21], [-10, 21]], [[-6, 0], [40, 8.5]], [[20, -19.5], [70, -19.5]], [[20, 8.5], [70, 8.5]], [[30, 19.5], [76, 19.5]]].forEach(([a, b], i) => {
+  for (let k = 0; k < 2; k++) { const g = new THREE.Group(); person(g, 0, 0, [0x3987e5, 0xe34948, 0x1baf7a, 0xff8a3d, 0x6250d6, 0x2f6fb3][i], false); const m = mergeObj(g); scene.add(m); WALKERS.push({ m, a: V(a[0], 0, a[1]), b: V(b[0], 0, b[1]), sp: 1.1 + k * 0.2, off: k * 0.5 + i * 0.17 }); }
+});
+// department labels in the factory
+label(`${DEPT.MFG.name}（${DEPT.MFG.hc}）`, V(24, 5.2, -4), 'dept', 220, () => openDept('MFG'));
+label(`${DEPT.PE.name}・保全`, V(52, 2.6, 13.5), 'dept', 120, () => openDept('PE'));
+
+// ============================================================ design studio (separate scene, units = mm)
+const studio = new THREE.Scene();
+studio.background = new THREE.Color(0x15191f); studio.environment = ENV;
+studio.add(new THREE.HemisphereLight(0xffffff, 0x30343a, 0.9));
+{ const k = new THREE.DirectionalLight(0xffffff, 2.2); k.position.set(160, 260, 140); k.castShadow = true; k.shadow.mapSize.set(2048, 2048); Object.assign(k.shadow.camera, { left: -160, right: 160, top: 160, bottom: -160, near: 50, far: 700 }); studio.add(k);
+  const r = new THREE.DirectionalLight(0x9cc4ff, 0.9); r.position.set(-200, 120, -160); studio.add(r); }
+const sCam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 2, 6000); sCam.position.set(250, 170, 300);
+const sCtl = new OrbitControls(sCam, canvas); sCtl.target.set(0, 22, 0); sCtl.enableDamping = true; sCtl.minDistance = 90; sCtl.maxDistance = 1400; sCtl.maxPolarAngle = Math.PI * 0.52; sCtl.enabled = false;
+function fitStudio() {   // frame the car by the horizontal field of view (phones are narrow)
+  const asp = innerWidth / innerHeight, narrow = asp < 0.9, hf = Math.atan(Math.tan(THREE.MathUtils.degToRad(sCam.fov / 2)) * asp);
+  const d = Math.max(430, (narrow ? 125 : 150) / Math.tan(hf)), dir = V(0.55, 0.38, 0.66).normalize();
+  sCtl.target.set(0, narrow ? -d * 0.09 : 22, 0); sCam.position.copy(sCtl.target).addScaledVector(dir, d); sCtl.update();
+}
+fitStudio();
+{
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(420, 96), std(0x1d2229, 0.1, 0.8)); disc.rotation.x = -Math.PI / 2; disc.receiveShadow = true; studio.add(disc);
+  const grid = new THREE.GridHelper(400, 40, 0x3a4250, 0x262c35); grid.position.y = 0.05; studio.add(grid);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(150, 153, 128), new THREE.MeshBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0.5 })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.1; studio.add(ring);
+}
+const turn = new THREE.Group(); studio.add(turn);
+let SCAR = null, curVar = VARIANTS[0], sel = null;
+const selBox = new THREE.Box3Helper(new THREE.Box3(), 0xff8a3d); selBox.visible = false; studio.add(selBox);
+// regulation envelope (165 × 105 × 70) with dimension labels
+const R = D.regulation, DESN = D.design;
+const envelope = new THREE.Group(); turn.add(envelope);
+{
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(R.length_max, R.height_max, R.width_max)), new THREE.LineBasicMaterial({ color: 0x3ddc84, transparent: true, opacity: 0.7 }));
+  e.position.y = R.height_max / 2; envelope.add(e);
+  const f = new THREE.Mesh(new THREE.BoxGeometry(R.length_max, R.height_max, R.width_max), new THREE.MeshBasicMaterial({ color: 0x3ddc84, transparent: true, opacity: 0.035, depthWrite: false })); f.position.y = R.height_max / 2; envelope.add(f);
+}
+const sLabels = [];
+function slabel(text, p, cls = '') { const el = document.createElement('div'); el.className = 'label ' + cls; el.textContent = text; document.body.appendChild(el); const o = { el, p, maxDist: 1e9, view: 'studio', obj: turn }; labels.push(o); sLabels.push(o); return o; }
+slabel(`全長 ≤ ${R.length_max}（設計 ${DESN.length}）`, V(0, 0, R.width_max / 2 + 6), 'small');
+slabel(`全幅 ≤ ${R.width_max}（ローラー ${DESN.width_rollers}）`, V(R.length_max / 2 + 4, 0, 0), 'small');
+slabel(`全高 ≤ ${R.height_max}（設計 ${DESN.height}）`, V(R.length_max / 2, R.height_max, R.width_max / 2), 'small');
+const cgMark = new THREE.Group(); turn.add(cgMark); cgMark.visible = false;
+{ const s = new THREE.Mesh(new THREE.SphereGeometry(3.2, 20, 14), new THREE.MeshBasicMaterial({ color: 0xfab219, depthTest: false })); s.renderOrder = 10; cgMark.add(s);
+  for (const ax of ['x', 'y', 'z']) { const len = { x: 190, y: 80, z: 120 }[ax], g = new THREE.BoxGeometry(ax === 'x' ? len : 0.5, ax === 'y' ? len : 0.5, ax === 'z' ? len : 0.5); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xfab219, transparent: true, opacity: 0.55, depthTest: false })); m.renderOrder = 10; cgMark.add(m); } }
+const cgLabel = slabel('', V(0, 0, 0), ''); cgLabel.el.style.display = 'none';
+
+function computeCG(car) {
+  const acc = V(0, 0, 0); let mass = 0;
+  for (const p of D.parts) {
+    const pn = p.pn === 'VW-BDY-110' ? BODY[curVar.body].pn : p.pn, g = car.groups[pn]; if (!g || p.ship_only) continue;
+    const b = new THREE.Box3().setFromObject(g); if (b.isEmpty()) continue;
+    const w = p.weight_g * p.qty; acc.addScaledVector(b.getCenter(V(0, 0, 0)), w); mass += w;
+  }
+  if (car.groups.BATTERY.visible) { const b = new THREE.Box3().setFromObject(car.groups.BATTERY), w = DESN.battery_mass_g * DESN.battery_count; acc.addScaledVector(b.getCenter(V(0, 0, 0)), w); mass += w; }
+  return { p: acc.multiplyScalar(1 / mass), mass };
+}
+function buildStudioCar(v) {
+  if (SCAR) turn.remove(SCAR.root);
+  curVar = v; SCAR = buildCar(v, { batteries: S.bat }); turn.add(SCAR.root);
+  SCAR.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  applyExplode(); updateCG(); renderBOM(); renderCard();
+}
+const S = { explode: 0, env: true, cg: false, bat: false, spin: false };
+function applyExplode() {
+  const f = smooth(S.explode);
+  for (const [pn, g] of Object.entries(SCAR.groups)) g.position.copy(SCAR.explode[pn] || V(0, 0, 0)).multiplyScalar(f * 1.25);
+  if (sel) highlight(sel);
+}
+function updateCG() {
+  const { p } = computeCG(SCAR);
+  cgMark.position.copy(p); cgMark.visible = S.cg && S.explode < 0.02;
+  cgLabel.p.copy(p).add(V(0, 8, 0)); cgLabel.el.textContent = `重心 前後 ${p.x >= 0 ? '+' : ''}${p.x.toFixed(1)} / 高さ ${p.y.toFixed(1)} mm`;
+  cgLabel.el.style.display = cgMark.visible ? '' : 'none';
+}
+function highlight(pn) {
+  const g = SCAR.groups[pn]; if (!g) { selBox.visible = false; return; }
+  g.updateMatrixWorld(true); selBox.box.setFromObject(g); selBox.box.expandByScalar(1.2); selBox.visible = true;
+}
+
+// ---------------------------------------------------------------- part cost roll-up (identical to tests/test_company_data.py)
+const COST = (() => {
+  const mrate = D.molding_rate_yen_h;
+  function molded(p) {
+    const mat = p.weight_g * (1 + p.runner_ratio) / 1000 * p.resin_yen_kg;
+    const ton = String(D.molding.find(m => m.id === p.machine).tonnage);
+    const machine = mrate[ton] * p.cycle_s / 3600 / p.cavities;
+    const mold = p.mold_cost ? p.mold_cost / p.mold_life_shots / p.cavities : 0;
+    return { total: mat + machine + mold, mat, machine, mold };
+  }
+  function unit(p) {
+    if (p.make_buy === '購入') return { total: p.unit_cost, buy: p.unit_cost };
+    if (p.smt) { const comp = D.pcb_bom.reduce((s, c) => s + c.cost * c.qty, 0), proc = D.smt.line_rate_yen_h * D.smt.panel_cycle_s / 3600 / D.smt.panel_up; return { total: comp + proc, comp, proc }; }
+    if ('machine_rate' in p) { const proc = p.machine_rate * p.cycle_s / 3600; return { total: p.sheet_yen + proc, sheet: p.sheet_yen, proc }; }
+    return molded(p);
+  }
+  const lines = D.parts.map(p => ({ p, u: unit(p), ext: unit(p).total * p.qty }));
+  const material = lines.reduce((s, l) => s + l.ext, 0), cm = D.cost_model, a = D.assembly;
+  const labor = (a.line_rate_yen_h + a.operator_rate_yen_h * a.operators) * TAKT / 3600;
+  const overhead = (material + labor) * cm.overhead_rate, total = material + labor + overhead + cm.logistics_per_unit + cm.warranty_per_unit;
+  const vave = D.vave.reduce((s, v) => s + v.saving, 0);
+  const net = v => v.msrp / (1 + cm.tax_rate) * (1 - cm.channel_margin);
+  return { unit, lines, material, labor, overhead, total, vave, after: total - vave, net, cm, byPn: Object.fromEntries(lines.map(l => [l.p.pn, l])) };
+})();
+
+// ---------------------------------------------------------------- BOM list (left) and card (right)
+const GROUP_NAME = { chassis: 'シャーシ系', drive: '駆動系', electronics: '電装系（独自基板）', wheels: '足回り', rollers: 'ローラー・ステー', body: 'ボディ', motor: 'モーター（購入品）', package: '梱包' };
+const bomEl = document.getElementById('dsL'), cardEl = document.getElementById('dsR');
+const ccTags = p => [...new Set((p.cc || []).map(c => c.cls))].map(c => `<span class="tag ${c.toLowerCase()}">${c}</span>`).join('');
+const partFor = pn => PART[pn] || PART[Object.values(BODY).some(b => b.pn === pn) ? 'VW-BDY-110' : pn];
+function renderBOM() {
+  const groups = {};
+  for (const p of D.parts) (groups[p.group] ||= []).push(p);
+  const w = D.parts.filter(p => !p.ship_only).reduce((s, p) => s + p.weight_g * p.qty, 0);
+  let h = `<div class="sec" style="margin-top:0">E-BOM ${D.parts.length} 行 · ${curVar.name}</div>`;
+  for (const [g, list] of Object.entries(groups)) {
+    h += `<div class="sec">${GROUP_NAME[g] || g}</div>`;
+    for (const p of list) {
+      const pn = p.pn === 'VW-BDY-110' ? BODY[curVar.body].pn : p.pn, name = p.pn === 'VW-BDY-110' ? BODY[curVar.body].name : p.name;
+      h += `<div class="bomrow ${sel === pn ? 'sel' : ''}" data-pn="${pn}"><div>${esc(name)}<small>${pn} · ×${p.qty} · ${p.weight_g * p.qty} g</small></div><div>${ccTags(p)}</div><span class="tag ${p.make_buy === '内製' ? 'in' : 'buy'}">${p.make_buy}</span></div>`;
+    }
+  }
+  h += `<div class="sec">合計（電池別）</div><div class="kv"><span>車体重量</span><b>${w.toFixed(1)} g</b><span>部品原価（材料費）</span><b>${yen(COST.material)}</b></div>`;
+  bomEl.innerHTML = h;
+  bomEl.querySelectorAll('.bomrow').forEach(r => r.onclick = () => selectPart(r.dataset.pn));
+}
+const statusCls = s => /不合格|NG|停止/.test(s) ? 's-bad' : /要処置|待ち|保留|条件|遅|検討中/.test(s) ? 's-warn' : /実施中|進行|評価中|審査中|対応中|準備|試行中|起票|提出済/.test(s) ? 's-run' : /完了|合格|承認|済|合意/.test(s) ? 's-ok' : 's-none';
+const stTag = s => `<span class="st ${statusCls(s)}">${esc(s)}</span>`;
+function selectPart(pn) {
+  sel = pn === sel ? null : pn; if (sel) highlight(sel); else selBox.visible = false;
+  renderBOM(); renderCard();
+}
+function renderCard() {
+  if (!sel) { cardEl.innerHTML = productCard(); bindPerf(); return; }
+  const p = partFor(sel), body = Object.values(BODY).find(b => b.pn === sel), l = COST.byPn[p.pn], u = l.u, sup = p.supplier ? SUP[p.supplier] : null;
+  const st = D.assembly.stations.find(s => s.id === p.station);
+  const ecn = D.ecn.filter(e => e.affected.some(a => a === p.pn || a === p.mold || a === sel));
+  const df = D.dfmea.filter(f => f.pn === p.pn), cp = D.control_plan.filter(c => c.pn === p.pn);
+  let costRows = '';
+  if (u.buy != null) costRows = `<span>購入単価</span><b>${yen(u.buy)}</b>`;
+  else if (u.comp != null) costRows = `<span>実装部品（${D.pcb_bom.length} 品目）</span><b>${yen(u.comp)}</b><span>SMT 加工費</span><b>¥${u.proc.toFixed(1)}</b>`;
+  else if (u.sheet != null) costRows = `<span>素材（カーボン板）</span><b>${yen(u.sheet)}</b><span>CNC 加工費</span><b>¥${u.proc.toFixed(1)}</b>`;
+  else costRows = `<span>樹脂（ランナー ${Math.round(p.runner_ratio * 100)}% 込）</span><b>¥${u.mat.toFixed(2)}</b><span>成形機 ${p.machine}（${p.cycle_s}s / ${p.cavities}個取り）</span><b>¥${u.machine.toFixed(2)}</b><span>金型償却 ${p.mold}</span><b>¥${u.mold.toFixed(2)}</b>`;
+  cardEl.innerHTML = `<div class="card">
+    <button id="dsBack" style="float:right">← 製品概要</button>
+    <div class="pn">${sel} · Rev ${ecn.length ? String.fromCharCode(65 + ecn.length) : 'A'}</div><h2>${esc(body ? body.name : p.name)}</h2><div class="pn">${esc(p.en || '')}</div>
+    <div style="margin:6px 0">${ccTags(p)} <span class="tag ${p.make_buy === '内製' ? 'in' : 'buy'}">${p.make_buy}</span></div>
+    <div class="kv"><span>材質</span><b>${esc(p.material)}</b><span>工法</span><b>${esc(p.process)}</b><span>員数</span><b>${p.qty}</b><span>重量</span><b>${p.weight_g} g × ${p.qty}</b>
+      ${sup ? `<span>サプライヤー</span><b>${esc(sup.name)}（${sup.rating}）</b>` : ''}${st ? `<span>組付工程</span><b>${st.id} ${esc(st.name)}</b>` : p.ship_only ? '<span>工程</span><b>A90 梱包</b>' : ''}</div>
+    <div class="sec">単価内訳</div><div class="kv">${costRows}<span><b style="color:var(--txt)">単価 / 台あたり</b></span><b>¥${u.total.toFixed(1)} / ${yen(l.ext)}</b></div>
+    ${p.cc?.length ? `<div class="sec">特殊特性（図面指示）</div><table><tr><th>特性</th><th>規格</th><th>区分</th></tr>${p.cc.map(c => `<tr><td>${esc(c.char)}</td><td>${esc(c.spec)} ${esc(c.tol)}</td><td>${ccTags({ cc: [c] })}</td></tr>`).join('')}</table>` : ''}
+    ${cp.length ? `<div class="sec">コントロールプラン</div><table><tr><th>No</th><th>特性</th><th class="num">Cpk</th></tr>${cp.map(c => { const k = cpk(c); return `<tr><td>${c.no}</td><td>${esc(c.char)}<br><small style="color:var(--mut)">${esc(c.method)} ${esc(c.sample)}/${esc(c.freq)}</small></td><td class="num ${k >= 1.67 ? 'ok' : k >= 1.33 ? 'wa' : 'ng'}">${k.toFixed(2)}</td></tr>`; }).join('')}</table>` : ''}
+    ${df.length ? `<div class="sec">DFMEA</div><table><tr><th>故障モード</th><th>S/O/D</th><th>AP</th></tr>${df.map(f => `<tr><td>${esc(f.fm)}</td><td>${f.S}/${f.O}/${f.D}</td><td>${apTag(f)}</td></tr>`).join('')}</table>` : ''}
+    ${ecn.length ? `<div class="sec">設計変更（ECN）</div><table>${ecn.map(e => `<tr><td>${e.id}<br>${stTag(e.status)}</td><td>${esc(e.title)}</td></tr>`).join('')}</table>` : ''}
+    ${sel === 'VW-PCB-190' ? pcbBlock() : ''}${sel === 'VW-MTR-180' ? motorBlock() : ''}
+  </div>`;
+  document.getElementById('dsBack').onclick = () => selectPart(sel);
+}
+function pcbBlock() {
+  const fw = D.firmware;
+  return `<div class="sec">基板 BOM（VX-Link）</div><table><tr><th>Ref</th><th>部品</th><th class="num">単価</th><th class="num">LT</th></tr>${D.pcb_bom.map(c => `<tr><td>${c.ref}</td><td>${esc(c.part)}<br><small style="color:var(--mut)">${esc(c.pkg)} ×${c.qty}</small></td><td class="num">¥${c.cost}</td><td class="num ${c.lead_w >= 10 ? 'wa' : ''}">${c.lead_w}w</td></tr>`).join('')}</table>
+  <div class="sec">ファームウェア ${fw.id} v${fw.version}</div><ul style="margin:0;padding-left:16px;font-size:11.5px">${fw.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul><div class="disc" style="margin-top:4px">${esc(fw.aspice_target)}</div>`;
+}
+function motorBlock() {
+  return `<div class="sec">モーター（市販品・3 グレード）</div><table><tr><th>型式</th><th class="num">無負荷 rpm</th><th class="num">停動 mN·m</th><th class="num">単価</th></tr>${D.motors.map(m => `<tr><td>${esc(m.name)}</td><td class="num">${m.no_load_rpm.toLocaleString()}</td><td class="num">${m.stall_mNm}</td><td class="num">¥${m.cost}</td></tr>`).join('')}</table><div class="disc">モーターは自社製造せず、130 サイズ DC モーターをサプライヤーから購入（受入検査で無負荷回転数・電流を全ロット抜取）。</div>`;
+}
+// --- product overview card: regulation checks + performance simulator
+let PERF = { motor: null, gear: null };
+function regChecks() {
+  const w = D.parts.filter(p => !p.ship_only).reduce((s, p) => s + p.weight_g * p.qty, 0) + (MOTOR[curVar.motor].mass_g - PART['VW-MTR-180'].weight_g) + (BODY[curVar.body].wing ? 1.6 : 0), wb = w + DESN.battery_mass_g * DESN.battery_count;
+  const size = { x: DESN.length, y: BODY[curVar.body].wing ? Math.max(DESN.height, WING.y + 1) : DESN.height, z: DESN.width_rollers };
+  return [
+    ['全長', `${size.x.toFixed(1)} mm`, `≤ ${R.length_max}`, size.x <= R.length_max],
+    ['全幅（ローラー含む）', `${size.z.toFixed(1)} mm`, `≤ ${R.width_max}`, size.z <= R.width_max],
+    ['全高', `${size.y.toFixed(1)} mm`, `≤ ${R.height_max}`, size.y <= R.height_max],
+    ['最低地上高', `${DESN.ground} mm`, `≥ ${R.ground_min}`, DESN.ground >= R.ground_min],
+    ['タイヤ径', `${DESN.tire_dia} mm`, `${R.tire_dia[0]}–${R.tire_dia[1]}`, DESN.tire_dia >= R.tire_dia[0] && DESN.tire_dia <= R.tire_dia[1]],
+    ['タイヤ幅', `${DESN.tire_width} mm`, `${R.tire_width[0]}–${R.tire_width[1]}`, DESN.tire_width >= R.tire_width[0] && DESN.tire_width <= R.tire_width[1]],
+    ['重量（電池・モーター込）', `${wb.toFixed(1)} g`, `≥ ${R.weight_min_g}`, wb >= R.weight_min_g],
+  ];
+}
+function productCard() {
+  const v = curVar, chk = regChecks();
+  PERF.motor ??= v.motor; PERF.gear ??= v.gear;
+  return `<div class="card"><div class="pn">${esc(D.meta.product)} · シャーシ ${esc(D.meta.chassis)}</div><h2>${esc(v.name)}</h2>
+  <div class="kv" style="margin-top:4px"><span>ボディ</span><b>${esc(BODY[v.body].name)}</b><span>標準モーター</span><b>${esc(MOTOR[v.motor].name)}</b><span>標準ギヤ</span><b>${esc(GEAR[v.gear].name)}</b><span>希望小売価格</span><b>${yen(v.msrp)}（税込）</b></div>
+  <div class="sec">規則エンベロープ適合（設計値）</div><div class="chk">${chk.map(([n, val, lim, ok]) => `<span>${n}</span><em>${val} / ${lim}</em><b class="${ok ? 'ok' : 'ng'}">${ok ? '✓ 適合' : '✗ 不適合'}</b>`).join('')}</div>
+  <div class="disc" style="margin-top:4px">${esc(R.source)} の寸法・重量枠をコース互換の設計制約として採用。</div>
+  <div class="sec">走行性能シミュレーション</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap"><select id="pfM">${D.motors.map(m => `<option value="${m.id}" ${m.id === PERF.motor ? 'selected' : ''}>${esc(m.name.replace('130サイズ DCモーター ', ''))}</option>`).join('')}</select>
+  <select id="pfG">${D.gears.map(g => `<option value="${g.id}" ${g.id === PERF.gear ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></div>
+  <div id="pfOut"></div>
+  <div class="disc">DC モーター線形トルク特性 × 減速比 × 駆動効率 ${TT.eta_drive} − 転がり抵抗（Crr ${TT.crr}）− 空気抵抗（Cd は CFD 相対値で更新）。周回 ${TT.lap_m} m・コーナー係数 ${TT.corner_factor}。</div></div>`;
+}
+function bindPerf() {
+  const run = () => {
+    PERF.motor = document.getElementById('pfM').value; PERF.gear = document.getElementById('pfG').value;
+    const m = carMassKg({ ...curVar, motor: PERF.motor }), cur = perf(PERF.motor, PERF.gear, curVar.body, m), base = perf(curVar.motor, curVar.gear, curVar.body, carMassKg(curVar));
+    document.getElementById('pfOut').innerHTML = `<div class="kv" style="margin:6px 0"><span>最高速</span><b>${cur.kmh.toFixed(1)} km/h（${cur.vmax.toFixed(2)} m/s）</b><span>0→90% 到達</span><b>${cur.t90.toFixed(2)} s</b><span>周回タイム（${TT.lap_m} m）</span><b>${cur.lap.toFixed(2)} s</b><span>巡航電流</span><b>${cur.amps.toFixed(2)} A</b><span>連続走行（2000 mAh 相当）</span><b>${cur.runtime_min.toFixed(0)} 分</b><span>Cd（使用値）</span><b>${cur.cd.toFixed(3)}</b><span>車重</span><b>${(m * 1000).toFixed(1)} g</b></div>${speedChart([['選択構成', cur.curve, '#3987e5'], ['標準構成', base.curve, '#9aa3ad']])}`;
+  };
+  document.getElementById('pfM').onchange = run; document.getElementById('pfG').onchange = run; run();
+}
+function speedChart(series) {
+  const W = 300, H = 150, L = 34, B = 24, T = 8, Rr = 8, vmax = Math.max(...series.flatMap(s => s[1].map(p => p[1]))) * 1.1, tmax = 3;
+  const x = t => L + t / tmax * (W - L - Rr), y = v => H - B - v / vmax * (H - B - T);
+  let g = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:4px" role="img" aria-label="速度-時間">`;
+  for (let v = 0; v <= vmax; v += vmax > 8 ? 2 : 1) g += `<line x1="${L}" x2="${W - Rr}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,.08)"/><text x="${L - 5}" y="${y(v) + 3}" font-size="9" fill="#909aa6" text-anchor="end">${v}</text>`;
+  for (let t = 0; t <= tmax; t++) g += `<text x="${x(t)}" y="${H - B + 12}" font-size="9" fill="#909aa6" text-anchor="middle">${t}s</text>`;
+  g += `<text x="4" y="${T + 4}" font-size="9" fill="#909aa6">m/s</text>`;
+  for (const [, c, col] of series.slice().reverse()) g += `<polyline fill="none" stroke="${col}" stroke-width="2" points="${c.map(p => `${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join(' ')}"/>`;
+  g += `</svg><div style="display:flex;gap:12px;font-size:10.5px;color:#909aa6">${series.map(s => `<span><i style="display:inline-block;width:10px;height:3px;background:${s[2]};vertical-align:middle;margin-right:4px"></i>${s[0]}</span>`).join('')}</div>`;
+  return g;
+}
+
+// ---------------------------------------------------------------- studio controls & picking
+const varSel = document.getElementById('dsVariant');
+varSel.innerHTML = VARIANTS.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+varSel.onchange = () => { sel = null; selBox.visible = false; PERF = { motor: null, gear: null }; buildStudioCar(VAR[varSel.value]); };
+document.getElementById('dsExplode').oninput = e => { S.explode = e.target.value / 100; applyExplode(); updateCG(); };
+const tog = (id, k, fn) => { const b = document.getElementById(id); b.classList.toggle('on', S[k]); b.onclick = () => { S[k] = !S[k]; b.classList.toggle('on', S[k]); fn(); }; };
+tog('dsEnv', 'env', () => { envelope.visible = S.env; sLabels.slice(0, 3).forEach(l => l.el.style.display = S.env ? '' : 'none'); });
+tog('dsCg', 'cg', updateCG);
+tog('dsBat', 'bat', () => { SCAR.groups.BATTERY.visible = S.bat; updateCG(); if (!sel) renderCard(); });
+tog('dsSpin', 'spin', () => {});
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(); let downAt = null;
+canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+canvas.addEventListener('pointerup', e => {
+  if (VIEW !== 'studio' || !downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
+  ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, sCam);
+  const hit = ray.intersectObject(SCAR.root, true).find(h => h.object.userData.pn && h.object.userData.pn !== 'BATTERY' && h.object.visible);
+  if (hit) selectPart(hit.object.userData.pn);
+});
+// design-review LED wall: a turntable camera rendering the studio car into DR_RT
+const drCam = new THREE.PerspectiveCamera(26, DR_RT.width / DR_RT.height, 2, 4000);
+function renderDR(t) {
+  const a = t * 0.25; drCam.position.set(Math.cos(a) * 360, 120, Math.sin(a) * 360); drCam.lookAt(0, 20, 0);
+  const env = envelope.visible, cg = cgMark.visible, sb = selBox.visible; envelope.visible = cgMark.visible = selBox.visible = false;
+  renderer.setRenderTarget(DR_RT); renderer.render(studio, drCam); renderer.setRenderTarget(null);
+  envelope.visible = env; cgMark.visible = cg; selBox.visible = sb;
+}
+
+// ============================================================ analysis helpers
+function ap({ S, O, D: Dt }) {   // AIAG-VDA FMEA Action Priority (Handbook 2019, simplified table)
+  if (S >= 9) { if (O >= 6) return 'H'; if (O >= 4) return Dt >= 2 ? 'H' : 'M'; if (O >= 2) return Dt >= 7 ? 'H' : Dt >= 5 ? 'M' : 'L'; return 'L'; }
+  if (S >= 7) { if (O >= 8) return 'H'; if (O >= 6) return Dt >= 2 ? 'H' : 'M'; if (O >= 4) return Dt >= 7 ? 'H' : 'M'; if (O >= 2) return Dt >= 5 ? 'M' : 'L'; return 'L'; }
+  if (S >= 4) { if (O >= 8) return Dt >= 5 ? 'H' : 'M'; if (O >= 6) return Dt >= 2 ? 'M' : 'L'; if (O >= 4) return Dt >= 7 ? 'M' : 'L'; return 'L'; }
+  if (S >= 2) return O >= 8 && Dt >= 5 ? 'M' : 'L';
+  return 'L';
+}
+const apTag = f => { const a = ap(f); return `<span class="st ${a === 'H' ? 's-bad' : a === 'M' ? 's-warn' : 's-ok'}">${a === 'H' ? 'H 高' : a === 'M' ? 'M 中' : 'L 低'}</span>`; };
+function cpk(c) { const up = (c.usl - c.mean) / (3 * c.sd); return c.lsl == null ? up : Math.min(up, (c.mean - c.lsl) / (3 * c.sd)); }
+const cpkCls = k => k >= 1.67 ? 'ok' : k >= 1.33 ? 'wa' : 'ng';
+const NOW = D.meta.now_week;
+const page = id => document.getElementById('pg-' + id);
+const box_ = (title, body, cls = '', sub = '') => `<div class="box ${cls}"><h2>${title}${sub ? ` <small>${sub}</small>` : ''}</h2>${body}</div>`;
+const kpi = (name, val, note = '', cls = '') => `<div class="kpi"><span>${name}</span><b class="${cls}">${val}</b><em>${note}</em></div>`;
+const table = (head, rows) => `<table><tr>${head.map(h => `<th${h.startsWith('#') ? ' class="num"' : ''}>${h.replace(/^#/, '')}</th>`).join('')}</tr>${rows.join('')}</table>`;
+
+// ============================================================ CFD page
+const CFDUI = { mode: 'speed', run: true, queue: ['STD', 'AERO', 'LOW'], want: 'STD' };
+function buildCFDPage() {
+  page('cfd').innerHTML = `<h1>空力 CFD（2D 格子ボルツマン法・ライブ解析）</h1>
+  <p class="lead">車体中心断面の 2 次元流れをブラウザ内で解いています（D2Q9 BGK、${LBM.NX}×${LBM.NY} 格子、1 格子 ${LBM.DX} mm、ムービンググラウンド）。3 種類のボディを自動で順に解析し、得られた相対 Cd を走行性能シミュレーションに反映します。</p>
+  <div id="cfdWrap"><div class="box"><canvas id="cfdCanvas" width="960" height="360"></canvas>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px" id="cfdBtns">
+      ${D.bodies.map(b => `<button data-b="${b.id}">${esc(b.name)}</button>`).join('')}
+      <span style="flex:1"></span><button data-m="speed">速度場</button><button data-m="vort">渦度</button><button id="cfdRun">⏸ 一時停止</button><button id="cfdReset">↺ リセット</button></div>
+    <div id="cfdLegend" style="margin-top:8px"></div></div>
+    <div class="box"><h2>解析結果 <small id="cfdStat"></small></h2><div id="cfdTable"></div>
+      <div class="sec">条件</div><div class="kv"><span>格子レイノルズ数</span><b id="cfdRe"></b><span>実車レイノルズ数（6 m/s）</span><b>${(LBM.reReal / 1e4).toFixed(1)}×10⁴</b><span>緩和時間 τ</span><b>0.55</b><span>流入速度（格子単位）</span><b>${LBM.U}</b></div>
+      <p class="disc">2 次元・低レイノルズ数での定性的な比較です。絶対値は風洞（DV-12）と相関を取り、標準ボディ Cd ${TT.cd} を基準に<b>相対値のみ</b>を性能計算に使用しています。ボディ断面は車幅方向に一様と仮定しているため、ウィングの翼端渦やホイールハウス内の 3 次元流れは表現されません。</p></div></div>`;
+  const P = page('cfd');
+  P.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { CFDUI.queue = []; CFDUI.want = b.dataset.b; LBM.setBody(b.dataset.b); paintCFDBtns(); });
+  P.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { CFDUI.mode = b.dataset.m; paintCFDBtns(); });
+  P.querySelector('#cfdRun').onclick = () => { CFDUI.run = !CFDUI.run; paintCFDBtns(); };
+  P.querySelector('#cfdReset').onclick = () => LBM.reset();
+  paintCFDBtns();
+}
+function paintCFDBtns() {
+  const P = page('cfd');
+  P.querySelectorAll('[data-b]').forEach(b => b.classList.toggle('on', b.dataset.b === LBM.body));
+  P.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === CFDUI.mode));
+  P.querySelector('#cfdRun').textContent = CFDUI.run ? '⏸ 一時停止' : '▶ 再開';
+  P.querySelector('#cfdLegend').innerHTML = CFDUI.mode === 'speed'
+    ? `<div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mut)">流速 0<span style="flex:1;max-width:260px;height:8px;border-radius:4px;background:linear-gradient(90deg,#0e121a,#5a7fb0,#bad cff)"></span>1.45 U　<span>白点＝流跡トレーサー</span></div>`.replace('#bad cff', '#badcff')
+    : `<div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mut)">時計回り<span style="flex:1;max-width:260px;height:8px;border-radius:4px;background:linear-gradient(90deg,#3987e5,#2e343c,#eb6834)"></span>反時計回り</div>`;
+}
+function cfdTick(nSteps) {
+  if (!CFDUI.run) return;
+  for (let i = 0; i < nSteps; i++) LBM.step();
+  if (CFDUI.queue.length && LBM.steps >= 4400) {          // automatic sweep across the three bodies
+    CFDUI.queue.shift();
+    LBM.setBody(CFDUI.queue[0] || CFDUI.want);
+    if (VIEW === 'cfd') paintCFDBtns();
+  }
+}
+function cfdDraw() {
+  const c = document.getElementById('cfdCanvas'), v = VAR[{ STD: 'KST-STD', AERO: 'KST-AERO', LOW: 'KST-LOW' }[LBM.body]];
+  LBM.draw(c, CFDUI.mode, v.color);
+  const g = c.getContext('2d'); g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(8, 8, 300, 46); g.fillStyle = '#fff'; g.font = '600 15px sans-serif';
+  g.fillText(`${BODY[LBM.body].name}`, 16, 28); g.font = '13px sans-serif'; g.fillStyle = '#c9ced4'; g.fillText(`step ${LBM.steps}  Cd₂ᴅ ${LBM.cd.toFixed(3)}  Cl₂ᴅ ${LBM.cl.toFixed(3)}`, 16, 46);
+  g.fillStyle = 'rgba(255,255,255,.7)'; g.font = '12px sans-serif'; g.fillText('→ 流入 U', 14, c.height - 20);
+  document.getElementById('cfdRe').textContent = LBM.re.toFixed(0);
+  document.getElementById('cfdStat').textContent = CFDUI.queue.length ? `自動スイープ中（${BODY[LBM.body].name.replace('KESTREL ', '')}）` : LBM.steps < 4000 ? '収束待ち' : '定常';
+  const ref = LBM.results.STD;
+  document.getElementById('cfdTable').innerHTML = table(['ボディ', '#Cd₂ᴅ', '#Cl₂ᴅ', '#抗力比', '#性能用 Cd', '#最高速'], D.bodies.map(b => {
+    const r = LBM.results[b.id], v = VARIANTS.find(x => x.body === b.id), p = perf(v.motor, v.gear, b.id, carMassKg(v));
+    return `<tr><td>${b.id}</td><td class="num">${r ? r.cd.toFixed(3) : '—'}</td><td class="num">${r ? r.cl.toFixed(3) : '—'}</td><td class="num">${r && ref ? (r.cd * r.h / (ref.cd * ref.h)).toFixed(3) : '—'}</td><td class="num">${(CD[b.id]).toFixed(3)}</td><td class="num">${p.kmh.toFixed(1)} km/h</td></tr>`;
+  })) + `<p class="disc">Cd₂ᴅ・Cl₂ᴅ は各ボディの断面高さ・長さ基準。抗力比は同一動圧での抗力の比（STD＝1）で、これを性能計算の Cd に反映。Cl が正＝揚力、負＝ダウンフォース。値は 4,000 ステップ以降の移動平均。</p>`;
+}
+function cfdScreen() {   // campus CAE-room screen
+  LBM.draw(cfdScreenTex.image, 'speed', VAR[{ STD: 'KST-STD', AERO: 'KST-AERO', LOW: 'KST-LOW' }[LBM.body]].color); cfdScreenTex.needsUpdate = true;
+}
+
+// ============================================================ process page (APQP / DR / PPAP / V-model / ECN)
+function gantt() {
+  const W = 1100, rowH = 30, top = 34, L = 150, ph = D.apqp, H = top + ph.length * rowH + 64, x = w => L + (w - 1) / 52 * (W - L - 16);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:760px" role="img" aria-label="APQP 日程">`;
+  for (let w = 1; w <= 52; w += 4) s += `<line x1="${x(w)}" x2="${x(w)}" y1="${top - 6}" y2="${H - 50}" stroke="rgba(255,255,255,.06)"/><text x="${x(w)}" y="${top - 12}" font-size="10" fill="#909aa6" text-anchor="middle">W${w}</text>`;
+  ph.forEach((p, i) => {
+    const y = top + i * rowH, done = p.end < NOW, act = p.start <= NOW && p.end >= NOW;
+    s += `<text x="8" y="${y + 19}" font-size="12" fill="#e8ecf1">${p.id} ${esc(p.name)}</text>`;
+    s += `<rect x="${x(p.start)}" y="${y + 7}" width="${x(p.end + 1) - x(p.start)}" height="16" rx="4" fill="${done ? '#2b5f9e' : act ? '#3987e5' : 'rgba(57,135,229,.25)'}"/>`;
+    if (act) s += `<rect x="${x(p.start)}" y="${y + 7}" width="${x(NOW) - x(p.start)}" height="16" rx="4" fill="#3987e5"/>`;
+    const g = p.gate; if (g) { const gx = x(g.week + 1), passed = g.week < NOW; const right = gx > W - 170; s += `<path d="M${gx} ${y + 4} l9 11 -9 11 -9 -11z" fill="${passed ? '#3ddc84' : '#fab219'}" stroke="#0e1115"/><text x="${right ? gx - 12 : gx + 12}" text-anchor="${right ? 'end' : 'start'}" y="${y + 19}" font-size="10.5" fill="${passed ? '#7ee8ac' : '#ffd27a'}">${g.id} ${esc(g.name)}${passed ? ' ✓' : ''}</text>`; }
+  });
+  const yd = top + ph.length * rowH + 8;
+  s += `<text x="8" y="${yd + 14}" font-size="12" fill="#e8ecf1">デザインレビュー</text>`;
+  for (const d of D.design_reviews) { const dx = x(d.week + 0.5), ok = /完了/.test(d.status); s += `<circle cx="${dx}" cy="${yd + 10}" r="7" fill="${ok ? '#3ddc84' : '#fab219'}"/><text x="${dx}" y="${yd + 32}" font-size="10" fill="#c9ced4" text-anchor="middle">${d.id} W${d.week}</text>`; }
+  s += `<line x1="${x(NOW + 0.5)}" x2="${x(NOW + 0.5)}" y1="${top - 8}" y2="${H - 12}" stroke="#ff5a52" stroke-width="2"/><text x="${x(NOW + 0.5) + 4}" y="${H - 14}" font-size="11" fill="#ff9a93">現在 W${NOW}</text>`;
+  s += `</svg><div style="display:flex;gap:14px;font-size:10.5px;color:#909aa6;margin-top:4px;flex-wrap:wrap"><span><i style="display:inline-block;width:12px;height:8px;background:#2b5f9e;border-radius:2px"></i> 完了フェーズ</span><span><i style="display:inline-block;width:12px;height:8px;background:#3987e5;border-radius:2px"></i> 進行中</span><span><i style="display:inline-block;width:12px;height:8px;background:rgba(57,135,229,.25);border-radius:2px"></i> 計画</span><span style="color:#7ee8ac">◆ 通過ゲート</span><span style="color:#ffd27a">◆ 次ゲート</span></div>`;
+  return s;
+}
+function vmodel() {
+  const L = [['製品要求（PRD）', '完了'], ['システム設計（電装・FW）', '完了'], ['回路・SW アーキテクチャ', '完了'], ['詳細設計・コーディング', '完了']];
+  const R2 = [['単体試験（MISRA 静的解析・UT）', '完了'], ['結合試験（HILS 相当ジグ）', '完了'], ['システム試験（DV-08〜11）', '実施中'], ['受入（PV・技適相当確認）', '予定']];
+  const W = 640, H = 230, s0 = [];
+  s0.push(`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="V字モデル">`);
+  const col = st => /完了/.test(st) ? '#3ddc84' : /実施中/.test(st) ? '#3987e5' : '#5d646c';
+  L.forEach(([n, st], i) => { const x = 10 + i * 58, y = 14 + i * 46; s0.push(`<rect x="${x}" y="${y}" width="190" height="30" rx="6" fill="#20262f" stroke="${col(st)}"/><text x="${x + 10}" y="${y + 19}" font-size="11" fill="#e8ecf1">${n}</text>`); });
+  R2.forEach(([n, st], i) => { const x = W - 200 - (3 - i) * 58, y = 14 + (3 - i) * 46; s0.push(`<rect x="${x}" y="${y}" width="190" height="30" rx="6" fill="#20262f" stroke="${col(st)}"/><text x="${x + 10}" y="${y + 19}" font-size="11" fill="#e8ecf1">${n}</text>`); });
+  for (let i = 0; i < 4; i++) { const y = 29 + i * 46; s0.push(`<line x1="${200 + i * 58}" x2="${W - 200 - (3 - i) * 58}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,.18)" stroke-dasharray="4 4"/>`); }
+  s0.push(`<text x="${W / 2}" y="${H - 6}" font-size="10.5" fill="#909aa6" text-anchor="middle">左：設計（分解）　点線：検証の対応関係　右：検証（統合）　枠色 緑＝完了 / 青＝実施中 / 灰＝予定</text></svg>`);
+  return s0.join('');
+}
+function buildProcessPage() {
+  const nextGate = D.apqp.map(p => p.gate).filter(Boolean).find(g => g.week >= NOW);
+  const ppapDone = D.ppap.filter(p => /承認/.test(p.status)).length;
+  page('process').innerHTML = `<h1>開発プロセス（APQP・ステージゲート）</h1>
+  <p class="lead">自動車業界の APQP（先行製品品質計画）を玩具スケールに適用。5 フェーズ・6 ゲート・5 回のデザインレビューで、企画から量産（SOP W46）までを管理しています。現在は <b>W${NOW}</b>、${nextGate ? `次のゲートは <b>${nextGate.id} ${esc(nextGate.name)}（W${nextGate.week}）</b>` : ''}。</p>
+  <div class="kpis">${kpi('現在週', `W${NOW}`, '全 52 週')}${kpi('次ゲート', nextGate ? nextGate.id : '—', nextGate ? `W${nextGate.week} ${esc(nextGate.name)}` : '')}${kpi('PPAP 承認', `${ppapDone} / 18`, '要素', ppapDone < 18 ? 'wa' : 'ok')}${kpi('DR 完了', `${D.design_reviews.filter(d => /完了/.test(d.status)).length} / ${D.design_reviews.length}`, '')}${kpi('ECN 件数', D.ecn.length, `未完了 ${D.ecn.filter(e => !/完了/.test(e.status)).length}`)}</div>
+  <div class="grid">
+  ${box_('APQP 日程', `<div style="overflow-x:auto">${gantt()}</div>`, 'wide', '週次・赤線＝現在')}
+  ${nextGate ? box_(`${nextGate.id} ${esc(nextGate.name)} 判定基準`, `<ul style="margin:0;padding-left:18px;line-height:1.8">${nextGate.criteria.map(c => `<li>${esc(c)}</li>`).join('')}</ul>`, '', `W${nextGate.week}`) : ''}
+  ${box_('デザインレビュー', table(['DR', '週', '範囲', '判定'], D.design_reviews.map(d => `<tr><td>${d.id}<br>${stTag(d.status)}</td><td>W${d.week}</td><td>${esc(d.scope)}</td><td>${esc(d.decision)}</td></tr>`)))}
+  ${box_('PPAP 18 要素', `<div class="scroll">${table(['#', '要素', '担当', '状態'], D.ppap.map(p => `<tr><td>${p.no}</td><td>${esc(p.name)}${p.note ? `<br><small style="color:var(--mut)">${esc(p.note)}</small>` : ''}</td><td>${esc(p.owner)}</td><td>${stTag(p.status)}</td></tr>`))}</div>`, '', '提出レベル 3 相当')}
+  ${box_('電装・ファームウェア V 字プロセス', vmodel(), '', esc(D.firmware.aspice_target))}
+  ${box_('設計変更（ECN）', table(['ECN', '件名', '理由', '影響', '処置', '状態'], D.ecn.map(e => `<tr><td>${e.id}<br><small style="color:var(--mut)">W${e.week}</small></td><td>${esc(e.title)}</td><td>${esc(e.reason)}</td><td>${e.affected.join('<br>')}</td><td>${esc(e.disposition)}</td><td>${stTag(e.status)}</td></tr>`)), 'wide')}
+  ${box_('設計変更フロー', `<div class="vs">${D.value_streams.find(v => v.id === 'CHG').steps.map(s => `<div class="step"><b>${esc(s[0])}</b><small>${esc(DEPT[s[1]]?.name || s[1])} · ${esc(s[2])}</small><small>${esc(s[3])}</small></div>`).join('<span style="align-self:center;color:var(--mut)">→</span>')}</div>`, 'wide')}
+  </div><p class="disc">${esc(D.meta.disclaimer)}</p>`;
+}
+
+// ============================================================ quality page
+const SPC = { cp: D.control_plan.find(c => c.no === 'CP-04'), pts: [], r: rng(37) };
+for (let i = 0; i < 40; i++) SPC.pts.push(spcPoint());
+function spcPoint() { const c = SPC.cp, n = 5; let s = 0; for (let k = 0; k < n; k++) s += c.mean + gauss(SPC.r) * c.sd; return s / n; }
+function spcChart() {
+  const c = SPC.cp, W = 640, H = 210, L = 46, B = 20, T = 10, Rr = 70, se = c.sd / Math.sqrt(5), ucl = c.mean + 3 * se, lcl = c.mean - 3 * se;
+  const lo = c.lsl - (c.usl - c.lsl) * 0.08, hi = c.usl + (c.usl - c.lsl) * 0.08, y = v => T + (hi - v) / (hi - lo) * (H - T - B), x = i => L + i / 39 * (W - L - Rr);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:900px;display:block" role="img" aria-label="X̄ 管理図">`;
+  for (const [v, n, col, dash] of [[c.usl, 'USL', '#ff5a52', ''], [c.lsl, 'LSL', '#ff5a52', ''], [ucl, 'UCL', '#fab219', '5 4'], [lcl, 'LCL', '#fab219', '5 4'], [c.mean, 'CL', '#909aa6', '2 3']])
+    s += `<line x1="${L}" x2="${W - Rr}" y1="${y(v)}" y2="${y(v)}" stroke="${col}" stroke-dasharray="${dash}"/><text x="${W - Rr + 6}" y="${y(v) + 4}" font-size="10" fill="${col}">${n} ${v.toFixed(3)}</text>`;
+  s += `<polyline fill="none" stroke="#3987e5" stroke-width="1.6" points="${SPC.pts.map((v, i) => `${x(i)},${y(v)}`).join(' ')}"/>`;
+  SPC.pts.forEach((v, i) => { const out = v > ucl || v < lcl; s += `<circle cx="${x(i)}" cy="${y(v)}" r="${out ? 4 : 2.6}" fill="${out ? '#ff5a52' : '#3987e5'}"/>`; });
+  s += `<text x="${L - 6}" y="${T + 8}" font-size="10" fill="#909aa6" text-anchor="end">mm</text></svg>`;
+  const k = cpk(c);
+  return s + `<div class="kv" style="max-width:420px"><span>${c.no} ${esc(c.process)} ${esc(c.char)}（${esc(c.spec)}）</span><b></b><span>Cpk（工程能力）</span><b class="${cpkCls(k)}">${k.toFixed(2)}（目標 ≥ 1.67）</b><span>サンプリング</span><b>${esc(c.sample)} / ${esc(c.freq)}・X̄ 管理図</b></div>`;
+}
+function buildQualityPage() {
+  const ks = D.control_plan.map(cpk), low = D.control_plan.filter(c => cpk(c) < 1.67);
+  const fm = [...D.dfmea, ...D.pfmea], H = fm.filter(f => ap(f) === 'H').length;
+  const d8 = D.eightd[0];
+  page('quality').innerHTML = `<h1>品質保証（FMEA・コントロールプラン・SPC・DVP&R・8D）</h1>
+  <p class="lead">AIAG-VDA FMEA のアクションプライオリティ（AP）を S/O/D から自動判定し、コントロールプランの工程能力指数 Cpk を実績平均・標準偏差から算出しています。管理図はライン稼働に合わせてライブ更新されます。</p>
+  <div class="kpis">${kpi('FMEA 項目', fm.length, `AP=H ${H} 件`, H ? 'wa' : 'ok')}${kpi('管理特性', D.control_plan.length, `Cpk<1.67：${low.length} 件`, low.length ? 'wa' : 'ok')}${kpi('最小 Cpk', Math.min(...ks).toFixed(2), low.map(c => c.no).join(' '), cpkCls(Math.min(...ks)))}${kpi('DV 試験', `${D.dvpr.filter(d => /合格/.test(d.status)).length} / ${D.dvpr.length}`, '合格')}${kpi('8D 進行中', D.eightd.length, d8.id)}</div>
+  <div class="grid">
+  ${box_('ライブ SPC', `<div id="spcBox">${spcChart()}</div>`, 'wide', `${SPC.cp.no} — 8D-0037 対象特性`)}
+  ${box_('DFMEA（設計）', `<div class="scroll">${table(['品目', '故障モード', '影響', '#S', '原因', '#O', '予防 / 検出', '#D', 'AP', '状態'], D.dfmea.map(f => `<tr><td>${esc(f.item)}</td><td>${esc(f.fm)}</td><td>${esc(f.effect)}</td><td class="num">${f.S}</td><td>${esc(f.cause)}</td><td class="num">${f.O}</td><td>${esc(f.prev)}<br><small style="color:var(--mut)">${esc(f.det)}</small></td><td class="num">${f.D}</td><td>${apTag(f)}</td><td>${stTag(f.status)}${f.action ? `<br><small style="color:var(--mut)">${esc(f.action)}</small>` : ''}</td></tr>`))}</div>`, 'wide')}
+  ${box_('PFMEA（工程）', `<div class="scroll">${table(['工程', '故障モード', '影響', '#S', '原因', '#O', '予防 / 検出', '#D', 'AP', '処置'], D.pfmea.map(f => `<tr><td>${esc(f.item)}</td><td>${esc(f.fm)}</td><td>${esc(f.effect)}</td><td class="num">${f.S}</td><td>${esc(f.cause)}</td><td class="num">${f.O}</td><td>${esc(f.prev)}<br><small style="color:var(--mut)">${esc(f.det)}</small></td><td class="num">${f.D}</td><td>${apTag(f)}</td><td>${stTag(f.status)}${f.action ? `<br><small style="color:var(--mut)">${esc(f.action)}</small>` : ''}</td></tr>`))}</div>`, 'wide')}
+  ${box_('コントロールプラン', `<div class="scroll">${table(['No', '工程', '特性', '区分', '規格', '#平均', '#σ', '#Cpk', '測定', '頻度', '異常時処置'], D.control_plan.map(c => { const k = cpk(c); return `<tr><td>${c.no}</td><td>${esc(c.process)}</td><td>${esc(c.char)}</td><td>${ccTags({ cc: [{ cls: c.cls }] })}</td><td>${esc(c.spec)}</td><td class="num">${c.mean}</td><td class="num">${c.sd}</td><td class="num ${cpkCls(k)}">${k.toFixed(2)}</td><td>${esc(c.method)}</td><td>${esc(c.sample)} / ${esc(c.freq)}</td><td>${esc(c.reaction)}</td></tr>`; }))}</div>`, 'wide', 'Cpk = min(USL−μ, μ−LSL) / 3σ')}
+  ${box_('DVP&R（設計検証計画・報告）', `<div class="scroll">${table(['ID', '試験', '規格', '判定基準', '#n', '結果', '状態'], D.dvpr.map(d => `<tr><td>${d.id}</td><td>${esc(d.test)}</td><td>${esc(d.std)}</td><td>${esc(d.spec)}</td><td class="num">${d.n}</td><td>${esc(d.result)}</td><td>${stTag(d.status)}</td></tr>`))}</div>`, 'wide', '玩具安全（ST2016 / EN 71 / ASTM F963）・電波法・EMC を含む')}
+  ${box_(`${d8.id} ${esc(d8.title)}`, `<div class="vs">${d8.steps.map(s => `<div class="step" style="border-color:${/完了/.test(s.s) ? 'rgba(61,220,132,.5)' : /実施中/.test(s.s) ? 'rgba(57,135,229,.7)' : 'var(--line)'}"><b>${esc(s.d)}</b>${stTag(s.s)}<small style="margin-top:3px">${esc(s.note)}</small></div>`).join('')}</div>`, 'wide', `起票 W${d8.opened_week}`)}
+  ${box_('サプライヤー評価', table(['ID', '社名', '品目', '格付', '#納期遵守', '#不良 ppm', '監査'], D.suppliers.map(s => `<tr><td>${s.id}</td><td>${esc(s.name)}</td><td>${esc(s.category)}</td><td>${stTag(s.rating === 'A' ? '合格 A' : '要改善 ' + s.rating)}</td><td class="num ${s.otd < 97 ? 'wa' : ''}">${s.otd}%</td><td class="num ${s.ppm > 100 ? 'wa' : ''}">${s.ppm}</td><td>${esc(s.audit)}</td></tr>`)), 'wide')}
+  </div>`;
+}
+
+// ============================================================ SCM page (MRP)
+function mrp(item) {
+  const M_ = D.mrp, n = M_.weeks, rows = { gross: [], sched: [], poh: [], por: [], rel: Array(n).fill(0) }, exc = [];
+  let oh = item.on_hand;
+  for (let w = 0; w < n; w++) {
+    const gross = Math.round(M_.demand[w] * item.per * 1000) / 1000, sch = +(item.receipts[String(w)] || 0);
+    oh += sch - gross; let por = 0;
+    if (oh < item.safety) { por = Math.ceil((item.safety - oh) / item.lot) * item.lot; oh += por; const rw = w - item.lead_w; if (rw < 0) exc.push(`W${M_.start_week + w} 受入分は発注期限 W${M_.start_week + rw} を過ぎています → 緊急手配・分納交渉`); else rows.rel[rw] += por; }
+    rows.gross.push(gross); rows.sched.push(sch); rows.poh.push(oh); rows.por.push(por);
+  }
+  rows.rel.forEach((q, w) => { if (q && w === 0) exc.push(`今週（W${M_.start_week}）発注が必要：${q.toLocaleString()}`); });
+  return { rows, exc };
+}
+function capacityChart() {
+  const M_ = D.mrp, m = D.meta, oee = 0.85, cap1 = Math.round(3600 / TAKT * m.shift_h * m.days_per_week * oee), cap2 = cap1 * 2;
+  const W = 640, H = 220, L = 44, B = 26, T = 12, Rr = 10, max = Math.max(cap2, ...M_.demand) * 1.08, bw = (W - L - Rr) / M_.weeks;
+  const y = v => H - B - v / max * (H - B - T);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:900px;display:block" role="img" aria-label="需要と能力">`;
+  for (let v = 0; v <= max; v += 2000) s += `<line x1="${L}" x2="${W - Rr}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,.07)"/><text x="${L - 5}" y="${y(v) + 3}" font-size="9.5" fill="#909aa6" text-anchor="end">${v / 1000}k</text>`;
+  M_.demand.forEach((d, i) => { const x = L + i * bw; s += `<rect x="${x + bw * 0.18}" y="${y(d)}" width="${bw * 0.64}" height="${y(0) - y(d)}" rx="3" fill="${d > cap1 ? '#fab219' : '#3987e5'}"/><text x="${x + bw / 2}" y="${H - B + 14}" font-size="9.5" fill="#909aa6" text-anchor="middle">W${M_.start_week + i}</text>`; });
+  for (const [c, n, dash] of [[cap1, '1 直（OEE 85%）', '6 4'], [cap2, '2 直', '2 3']]) s += `<line x1="${L}" x2="${W - Rr}" y1="${y(c)}" y2="${y(c)}" stroke="#e8ecf1" stroke-dasharray="${dash}"/><text x="${L + 4}" y="${y(c) - 5}" font-size="10" fill="#e8ecf1" paint-order="stroke" stroke="#1b2129" stroke-width="3">${n} ${c.toLocaleString()} 台/週</text>`;
+  s += `</svg><div style="display:flex;gap:14px;font-size:10.5px;color:#909aa6;flex-wrap:wrap"><span><i style="display:inline-block;width:10px;height:10px;background:#3987e5;border-radius:2px;vertical-align:-1px"></i> 需要（1 直で対応可）</span><span><i style="display:inline-block;width:10px;height:10px;background:#fab219;border-radius:2px;vertical-align:-1px"></i> 需要（1 直能力超過）</span><span>点線＝生産能力</span></div>`;
+  return { svg: s, cap1, cap2 };
+}
+function buildSCMPage() {
+  const M_ = D.mrp, cap = capacityChart(), tot = M_.demand.reduce((a, b) => a + b, 0);
+  const res = M_.items.map(it => ({ it, ...mrp(it) })), nexc = res.reduce((s, r) => s + r.exc.length, 0);
+  const hdr = ['', ...Array.from({ length: M_.weeks }, (_, i) => '#W' + (M_.start_week + i))];
+  const fmt = v => v ? (Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v).toLocaleString()) : '';
+  page('scm').innerHTML = `<h1>SCM・MRP（資材所要量計画）</h1>
+  <p class="lead">販売計画（W${M_.start_week}〜、SOP 後の立上げ）から品目別に総所要量を展開し、手持在庫・入荷予定・安全在庫・ロットサイズ・リードタイムを考慮して計画発注を算出しています（ブラウザ内で計算）。</p>
+  <div class="kpis">${kpi('12 週需要', tot.toLocaleString() + ' 台', `構成 STD ${M_.mix['KST-STD'] * 100}% / AERO ${M_.mix['KST-AERO'] * 100}% / LOW ${M_.mix['KST-LOW'] * 100}%`)}${kpi('1 直能力', cap.cap1.toLocaleString(), '台/週（タクト 24 s・OEE 85%）')}${kpi('能力超過週', M_.demand.filter(d => d > cap.cap1).length, '2 直化で対応', 'wa')}${kpi('MRP 例外', nexc, '要手配', nexc ? 'ng' : 'ok')}</div>
+  <div class="grid">${box_('需要と生産能力', cap.svg, 'wide')}
+  ${box_('販売チャネル構成', table(['チャネル', '#構成比'], D.sales_channels.map(([n, r]) => `<tr><td>${esc(n)}</td><td class="num">${(r * 100).toFixed(0)}%</td></tr>`)))}
+  ${box_('MRP 例外メッセージ', res.filter(r => r.exc.length).map(r => `<div style="margin-bottom:6px"><b>${esc(r.it.name)}</b>（${r.it.pn}・LT ${r.it.lead_w} 週）${r.exc.map(e => `<div class="ng" style="font-size:11.5px">⚠ ${esc(e)}</div>`).join('')}</div>`).join('') || '<span class="ok">例外なし</span>')}
+  ${res.map(r => box_(`${esc(r.it.name)} <small>${r.it.pn}</small>`, `<div style="overflow-x:auto">${table(hdr, [['総所要量', r.rows.gross], ['入荷予定', r.rows.sched], ['予定在庫', r.rows.poh], ['計画受入', r.rows.por], ['計画発注', r.rows.rel]].map(([n, a]) => `<tr><td style="white-space:nowrap">${n}</td>${a.map(v => `<td class="num ${n === '予定在庫' && v < r.it.safety ? 'wa' : n === '計画発注' && v ? 'ok' : ''}">${fmt(v)}</td>`).join('')}</tr>`))}</div>`, 'wide', `在庫 ${r.it.on_hand.toLocaleString()}・安全在庫 ${r.it.safety.toLocaleString()}・ロット ${r.it.lot.toLocaleString()}・LT ${r.it.lead_w} 週・原単位 ${r.it.per}`)).join('')}
+  </div>`;
+}
+
+// ============================================================ cost page
+function buildCostPage() {
+  const C = COST, cm = C.cm, parts = [['材料費（部品）', C.material, '#3987e5'], ['加工・組立労務費', C.labor, '#1baf7a'], ['製造間接費', C.overhead, '#8c6be8'], ['物流費', cm.logistics_per_unit, '#eda100'], ['保証引当', cm.warranty_per_unit, '#e87ba4']];
+  const W = 640, H = 120, L = 10, max = Math.max(C.total, cm.target_cost) * 1.1, sx = v => v / max * (W - 2 * L);
+  let x = L, bar = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="原価構成">`;
+  for (const [n, v, c] of parts) { bar += `<rect x="${x}" y="20" width="${sx(v)}" height="34" fill="${c}"/>`; if (sx(v) > 46) bar += `<text x="${x + sx(v) / 2}" y="41" font-size="11" fill="#fff" text-anchor="middle">${yen(v)}</text>`; x += sx(v); }
+  const after = L + sx(C.after);
+  bar += `<rect x="${L}" y="66" width="${sx(C.after)}" height="18" fill="rgba(57,135,229,.35)"/><text x="${L + 6}" y="79" font-size="10.5" fill="#e8ecf1">VA/VE 後 ${yen(C.after)}</text>`;
+  bar += `<line x1="${L + sx(cm.target_cost)}" x2="${L + sx(cm.target_cost)}" y1="10" y2="96" stroke="#ff5a52" stroke-width="2"/><text x="${L + sx(cm.target_cost)}" y="110" font-size="11" fill="#ff9a93" text-anchor="middle">目標原価 ${yen(cm.target_cost)}</text>`;
+  bar += `<text x="${L + sx(C.total) + 4}" y="41" font-size="11" fill="#e8ecf1">${yen(C.total)}</text></svg><div style="display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:#909aa6">${parts.map(([n, , c]) => `<span><i style="display:inline-block;width:10px;height:10px;background:${c};border-radius:2px;vertical-align:-1px"></i> ${n}</span>`).join('')}</div>`;
+  const gap = C.total - cm.target_cost;
+  page('cost').innerHTML = `<h1>原価企画（積上げ原価 vs 目標原価）</h1>
+  <p class="lead">E-BOM 23 行から部品原価を積み上げています。内製成形品は「樹脂（ランナー込）＋成形機チャージ（トン数別 ¥/h × サイクル ÷ 取り数）＋金型償却（型費 ÷ 型寿命 ÷ 取り数）」、基板は「実装部品＋SMT ラインチャージ ÷ 面付け」、購入品は見積単価。組立は「ライン＋作業者チャージ × タクト」。</p>
+  <div class="kpis">${kpi('積上げ原価', yen(C.total), `目標 ${yen(cm.target_cost)}`, gap > 0 ? 'wa' : 'ok')}${kpi('目標差', (gap > 0 ? '+' : '') + yen(gap).replace('¥-', '−¥'), `${(gap / cm.target_cost * 100).toFixed(1)}%`, gap > 0 ? 'wa' : 'ok')}${kpi('VA/VE 効果', '−' + yen(C.vave), `${D.vave.length} 施策`)}${kpi('VA/VE 後', yen(C.after), C.after <= cm.target_cost ? '目標達成見込み' : '未達', C.after <= cm.target_cost ? 'ok' : 'ng')}</div>
+  <div class="grid">${box_('原価構成（1 台あたり）', bar, 'wide')}
+  ${box_('部品別原価（高い順）', `<div class="scroll">${table(['P/N', '品名', '区分', '#員数', '#単価', '#台当り', '#構成比'], C.lines.slice().sort((a, b) => b.ext - a.ext).map(l => `<tr><td>${l.p.pn}</td><td>${esc(l.p.name)}</td><td><span class="tag ${l.p.make_buy === '内製' ? 'in' : 'buy'}">${l.p.make_buy}</span></td><td class="num">${l.p.qty}</td><td class="num">¥${l.u.total.toFixed(1)}</td><td class="num">¥${l.ext.toFixed(1)}</td><td class="num">${(l.ext / C.material * 100).toFixed(1)}%</td></tr>`))}</div>`, 'wide')}
+  ${box_('VA/VE 施策', table(['ID', '施策', '担当', '#効果', '状態'], D.vave.map(v => `<tr><td>${v.id}</td><td>${esc(v.title)}</td><td>${esc(v.owner)}</td><td class="num">−¥${v.saving}</td><td>${stTag(v.status)}</td></tr>`)), 'wide')}
+  ${box_('バリエーション別 粗利', table(['仕様', '#希望小売（税込）', '#仕切（税抜・流通 40%）', '#原価', '#粗利', '#粗利率'], VARIANTS.map(v => { const n = C.net(v); return `<tr><td>${esc(v.name)}</td><td class="num">${yen(v.msrp)}</td><td class="num">${yen(n)}</td><td class="num">${yen(C.total)}</td><td class="num">${yen(n - C.total)}</td><td class="num">${((n - C.total) / n * 100).toFixed(0)}%</td></tr>`; })), 'wide', 'モーター・ボディ差分は標準原価に含めて簡略化')}
+  </div>`;
+}
+
+// ============================================================ back office page + department modal
+const WIP = Object.fromEntries(D.value_streams.map(v => [v.id, v.steps.map((_, i) => 2 + ((i * 7 + v.id.length) % 9))]));
+function buildOfficePage() {
+  const hc = D.departments.reduce((s, d) => s + d.hc, 0);
+  page('office').innerHTML = `<h1>バックオフィス・組織（${hc} 名・${D.departments.length} 部門）</h1>
+  <p class="lead">開発・製造だけでなく、経営企画・購買・SCM・営業・カスタマーサポート・経理・人事・法務（知財・商標・玩具安全法規）・情報システムまでを部門ごとのミッション・システム・KPI で再現。主要な業務プロセス（バリューストリーム）は部門横断のスイムレーンで、各ステップの仕掛り件数がライブで変化します。</p>
+  <div class="kpis">${kpi('従業員', hc + ' 名', `社員総数 ${D.people.total}（工場間接含む）`)}${kpi('受注（本日）', '<span id="okOrders">0</span>', '件')}${kpi('発注書（本日）', '<span id="okPOs">0</span>', '件')}${kpi('出荷（本日）', '<span id="okShip">0</span>', 'ケース')}${kpi('問い合わせ', '<span id="okTix">0</span>', '件（I2R）')}</div>
+  <div class="box" style="margin-bottom:12px"><h2>業務プロセス（バリューストリーム）<small>右上の数字＝仕掛り件数</small></h2><div id="vsList"></div></div>
+  <div class="grid">${D.departments.map(d => `<div class="dept"><h3>${esc(d.name)} <span>${d.hc} 名</span></h3><p>${esc(d.mission)}</p><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">${d.systems.map(s => `<span class="tag buy">${esc(s)}</span>`).join('')}</div>${table(['KPI', '#実績', '#目標'], d.kpis.map(k => `<tr><td>${esc(k[0])}</td><td class="num">${esc(k[1])}</td><td class="num" style="color:var(--mut)">${esc(k[2])}</td></tr>`))}</div>`).join('')}</div>`;
+  renderVS();
+}
+function renderVS() {
+  const el = document.getElementById('vsList'); if (!el) return;
+  el.innerHTML = D.value_streams.map(v => `<div class="sec">${v.id} ${esc(v.name)}</div><div class="vs">${v.steps.map((s, i) => `<div class="step"><span class="wip">${WIP[v.id][i]}</span><b>${esc(s[0])}</b><small>${esc(DEPT[s[1]]?.name || s[1])}</small><small>${esc(s[2])} · ${esc(s[3])}</small></div>`).join('<span style="align-self:center;color:var(--mut)">→</span>')}</div>`).join('');
+}
+const modal = document.getElementById('deptModal');
+function openDept(id) {
+  const d = DEPT[id], vs = D.value_streams.flatMap(v => v.steps.filter(s => s[1] === id).map(s => `${v.id}：${s[0]}`));
+  modal.innerHTML = `<button style="float:right" id="dmX">✕</button><h2 style="margin:0 0 2px;font-size:16px">${esc(d.name)}</h2><div class="pn" style="color:var(--mut)">${d.hc} 名 · ${d.systems.map(esc).join(' / ')}</div>
+  <p style="line-height:1.6">${esc(d.mission)}</p>${table(['KPI', '#実績', '#目標'], d.kpis.map(k => `<tr><td>${esc(k[0])}</td><td class="num">${esc(k[1])}</td><td class="num">${esc(k[2])}</td></tr>`))}
+  ${vs.length ? `<div class="sec">担当する業務プロセス</div><div style="display:flex;flex-wrap:wrap;gap:4px">${vs.map(s => `<span class="tag in">${esc(s)}</span>`).join('')}</div>` : ''}`;
+  modal.classList.add('show'); document.getElementById('dmX').onclick = () => modal.classList.remove('show');
+}
+
+// ============================================================ live business simulation (events → ticker, counters, WIP)
+const BIZ = { orders: 0, pos: 0, ship: 0, tix: 0, fg: 1240, backlog: 3860, ncr: 0, next: 1.5, r: rng(101), log: [] };
+const tickerEl = document.getElementById('ticker');
+const EVC = { O2C: '#3987e5', PR2P: '#8c6be8', MFG: '#1baf7a', QA: '#ff5a52', CHG: '#fab219', I2R: '#56c2e6', FIN: '#9aa3ad' };
+function event(kind, text) {
+  BIZ.log.unshift([kind, text, clock()]); BIZ.log.length = Math.min(BIZ.log.length, 9);
+  tickerEl.innerHTML = BIZ.log.map(([k, t, c]) => `<div><i style="background:${EVC[k]}"></i><em>${c}</em><span>[${k}] ${esc(t)}</span></div>`).join('');
+}
+function clock() { const m = 8 * 60 + 30 + Math.floor(SIM.t * SCALE / 60); return `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; }
+const CUSTOMERS = ['ホビーランド横浜（架空）', 'トイパーク梅田（架空）', '模型のサカエ（架空）', 'VELO 公式 EC', 'Asia Hobby Dist.（架空）', 'カワセミ模型（架空）'];
+function bizTick(dt) {
+  BIZ.next -= dt; if (BIZ.next > 0) return;
+  const r = BIZ.r(), pick = a => a[Math.floor(BIZ.r() * a.length)];
+  BIZ.next = 2.2 + BIZ.r() * 2.8;
+  if (r < 0.28) { const q = 12 * (1 + Math.floor(BIZ.r() * 20)), v = pick(VARIANTS); BIZ.orders++; BIZ.backlog += q; event('O2C', `受注 SO-${26000 + BIZ.orders * 7} ${pick(CUSTOMERS)} ${v.name} ×${q}（与信 OK・ATP 回答 W${NOW + 1 + Math.floor(BIZ.r() * 3)}）`); bump('O2C', 0); }
+  else if (r < 0.44) { const it = pick(D.mrp.items); BIZ.pos++; event('PR2P', `発注 PO-${88100 + BIZ.pos} ${it.name} ×${it.lot.toLocaleString()} → ${it.pn.startsWith('U') ? SUP['SUP-04'].name : pick(D.suppliers).name}（承認ワークフロー完了）`); bump('PR2P', 2); }
+  else if (r < 0.58) { const q = 48 + Math.floor(BIZ.r() * 6) * 24; BIZ.ship++; BIZ.fg = Math.max(0, BIZ.fg - q); BIZ.backlog = Math.max(0, BIZ.backlog - q); event('O2C', `出荷 DN-${51000 + BIZ.ship} ${q} 台 ${pick(CUSTOMERS)}（請求書 自動発行）`); bump('O2C', 3); }
+  else if (r < 0.70) { SPC.pts.push(spcPoint()); SPC.pts.shift(); const v = SPC.pts.at(-1), c = SPC.cp; event('QA', `SPC ${c.no} ${c.char} X̄=${v.toFixed(3)} mm（n=5）${Math.abs(v - c.mean) > 3 * c.sd / Math.sqrt(5) ? ' ⚠ 管理限界外 → 8D-0037 に追記' : ' 管理状態'}`); if (VIEW === 'quality') document.getElementById('spcBox').innerHTML = spcChart(); }
+  else if (r < 0.78) { BIZ.tix++; event('I2R', `問い合わせ CS-${7100 + BIZ.tix}「${pick(['アプリとの BLE 接続方法', 'ギヤ比の変更方法', 'ローラー交換部品の購入', '電池の推奨銘柄', 'FW 更新が途中で止まる'])}」→ ${pick(['FAQ で解決', '技術窓口へエスカレーション', '交換部品手配'])}`); bump('I2R', 1); }
+  else if (r < 0.86) { event('PR2P', `受入検査 ${pick(['モーター 無負荷回転数 n=32 合格', 'ベアリング 外観・回転トルク n=50 合格', '車軸 軸径 n=20 合格（Cpk 1.73）', 'パッケージ 色差 ΔE 1.2 合格'])}`); bump('PR2P', 3); }
+  else if (r < 0.92) { event('FIN', `${pick(['3-way match 照合完了 PO-88' + (100 + BIZ.pos) + '（差異 ¥0）', '月次原価差異 材料費 −0.8%（樹脂単価改定）', '売掛金 入金消込 18 件', '設備投資稟議 金型温調追加 ¥1.9M 承認待ち'])}`); bump('R2R', 1); }
+  else { event('CHG', `${pick(['ECR-0219 タイヤ金型 温調回路追加 → CCB 審議', 'ECN-0431 図面改訂 Rev C 発行準備', 'DR5 資料：PPAP 18 要素中 15 承認'])}`); bump('CHG', 1); }
+  for (const v of Object.values(WIP)) for (let i = 0; i < v.length; i++) if (BIZ.r() < 0.2) v[i] = Math.max(0, v[i] + (BIZ.r() < 0.5 ? -1 : 1));
+  if (VIEW === 'office') { renderVS(); for (const [id, k] of [['okOrders', 'orders'], ['okPOs', 'pos'], ['okShip', 'ship'], ['okTix', 'tix']]) document.getElementById(id).textContent = BIZ[k]; }
+}
+function bump(vs, i) { if (WIP[vs]) WIP[vs][i] = (WIP[vs][i] || 0) + 1; }
+
+// ============================================================ track cars (one per variant, real-time speeds from the performance model)
+const TRACK_CARS = VARIANTS.map((v, k) => {
+  const c = buildCar(v, { merged: true }); c.root.scale.setScalar(MM); scene.add(c.root);
+  return { v, c, lane0: k, s: k * TRACK.L / 3, best: null, last: null, lapStart: 0, laps: 0 };
+});
+function trackSpeed(v) { const p = perf(v.motor, v.gear, v.body, carMassKg(v)); return { vmax: p.vmax, avg: p.vmax * TT.corner_factor }; }
+function drawBoard() {
+  const cv = TRACK.board.image, g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, H); g.fillStyle = '#ff8a3d'; g.fillRect(0, 0, W, 6);
+  g.fillStyle = '#fff'; g.font = 'bold 30px sans-serif'; g.fillText('DV-06 TEST COURSE', 20, 48);
+  g.font = '22px sans-serif'; g.fillStyle = '#909aa6'; g.fillText(`1 周 ${TRACK.L.toFixed(1)} m · 3 レーン`, 20, 82);
+  TRACK_CARS.forEach((t, i) => {
+    const y = 128 + i * 40; g.fillStyle = t.v.color; g.fillRect(20, y - 22, 14, 26);
+    g.fillStyle = '#e8ecf1'; g.font = '24px sans-serif'; g.fillText(t.v.name.replace('KESTREL ', ''), 46, y);
+    g.font = 'bold 24px monospace'; g.fillText(t.last ? `${t.last.toFixed(2)} s` : '--.-- s', 230, y);
+    g.fillStyle = '#909aa6'; g.font = '20px monospace'; g.fillText(`L${t.laps}`, 400, y);
+  });
+  TRACK.board.needsUpdate = true;
+}
+drawBoard();
+
+// ============================================================ camera presets
+const CAMS = [
+  ['全景', [2, 118, 108], [2, 0, 4]],
+  ['設計事務所', [-43, 34, 40], [-43, 0, 0]],
+  ['デザインレビュー室', [-68, 5.5, -20], [-68, 2, -40]],
+  ['CAE 室', [-47, 5, -22], [-47, 1.8, -40]],
+  ['テストコース', [-21.8, 1.1, -33.4], [-19.4, 0.08, -35]],
+  ['走行追従カメラ', null, null, 'follow'],
+  ['試作・品質ラボ', [-47, 20, 52], [-47, 0, 31]],
+  ['射出成形', [43, 16, -12], [43, 1, -31]],
+  ['SMT', [36, 7, -4], [36, 1, -13]],
+  ['組立ライン', [stX(1.5), 1.75, 2.3], [stX(4), 0.85, -0.2]],
+  ['ロボット接写', [stX(1) + 0.32, ASM.y + 0.42, ASM.z + 0.52], [stX(1), ASM.y + 0.05, ASM.z - 0.12]],
+  ['EOL・梱包', [stX(7) - 0.4, 1.5, 1.5], [stX(8) + 1, 0.85, -0.1]],
+  ['倉庫・出荷', [70, 22, 52], [70, 0, 28]],
+];
+const camsEl = document.getElementById('cams');
+let tween = null;
+camsEl.innerHTML = CAMS.map((c, i) => `<button data-i="${i}">${c[0]}</button>`).join('');
+camsEl.querySelectorAll('button').forEach(b => b.onclick = () => goCam(+b.dataset.i));
+let FOLLOW = null;
+controls.addEventListener('start', () => { if (FOLLOW && !FOLLOW.auto) FOLLOW = null; });
+function goCam(i, instant = false) {
+  const [, p, t, mode] = CAMS[i]; camsEl.querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
+  FOLLOW = null; if (mode === 'follow') { FOLLOW = { car: TRACK_CARS[(TRACK_CARS.indexOf(FOLLOW?.car) + 1) % TRACK_CARS.length] }; tween = null; return; }
+  if (instant) { camera.position.set(...p); controls.target.set(...t); controls.update(); return; }
+  tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: V(...p), t1: V(...t), u: 0 };
+}
+
+// ============================================================ views
+let VIEW = 'campus';
+const tabs = document.getElementById('tabs'), hud = document.getElementById('hud'), ds = document.getElementById('ds');
+const BUILT = {};
+function setView(v) {
+  VIEW = v; tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  const campus = v === 'campus', st = v === 'studio';
+  hud.style.display = tickerEl.style.display = camsEl.style.display = campus ? '' : 'none';
+  ds.classList.toggle('show', st); controls.enabled = campus; sCtl.enabled = st;
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('show', p.id === 'pg-' + v));
+  modal.classList.remove('show');
+  const build = { cfd: buildCFDPage, process: buildProcessPage, quality: buildQualityPage, scm: buildSCMPage, cost: buildCostPage, office: buildOfficePage }[v];
+  if (build && (!BUILT[v] || v !== 'cfd')) { build(); BUILT[v] = true; }
+  if (st) { renderCard(); }
+  for (const l of labels) if (l.view !== v) l.el.style.display = 'none';
+}
+tabs.querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.view));
+
+// ============================================================ simulation state & update
+const SIM = { t: 40 * CYC + 1, frame: 0, done: 0, fails: 0 };
+const PHASE = D.apqp.find(p => p.start <= NOW && p.end >= NOW) || D.apqp.at(-1);
+document.getElementById('hScale').textContent = SCALE;
+document.getElementById('hTakt').textContent = `${TAKT} s（デモ ${CYC.toFixed(1)} s）`;
+document.getElementById('hPhase').textContent = `${PHASE.id} ${PHASE.name} · W${NOW}`;
+const hash = n => { let x = (n * 2654435761) >>> 0; x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0; x ^= x >>> 13; return (x >>> 0) / 4294967296; };
+const BODY_PNS = new Set(D.bodies.map(b => b.pn));
+const tmpV = V(0, 0, 0), tmpV2 = V(0, 0, 0);
+const MOVE = 0.18;                                    // fraction of the cycle used for indexing
+let lastPack = -1;
+
+function updateLine(t) {
+  const C = Math.floor(t / CYC), u = t / CYC - C, mv = smooth(u / MOVE), dwell = clamp((u - MOVE - 0.02) / (1 - MOVE - 0.04), 0, 1);
+  for (const pool of Object.values(POOL)) for (const c of pool) c.root.visible = false;
+  const used = Object.fromEntries(VARIANTS.map(v => [v.id, 0]));
+  for (let i = 0; i < LINE_N; i++) {
+    const s = C - i; if (s < 0) continue;
+    const vid = MIX[s % MIX.length], car = POOL[vid][used[vid]++], body = BODY[VAR[vid].body].pn;
+    car.root.visible = true;
+    const x = u < MOVE ? stX(i - 1) + ASM.sp * mv : stX(i);
+    car.root.position.set(x, ASM.y + 0.01, ASM.z); car.root.rotation.set(0, 0, 0);
+    // which parts are on the car: stations < i, plus station i once the robot has placed (or the operator fitted) them
+    const placed = u >= MOVE && dwell > 0.7;
+    for (const [pn, g] of Object.entries(car.groups)) g.visible = false;
+    for (let k = 0; k <= i; k++) {
+      if (k === i && !placed) continue;
+      for (let pn of STATION_PARTS[k]) { if (pn === 'VW-BDY-110') pn = body; const g = car.groups[pn]; if (g) g.visible = true; }
+    }
+    if (ASM.stations[i].id === 'A80' && u >= MOVE) car.root.position.y += Math.sin(dwell * Math.PI) * 0.004;   // dyno lift
+    if (ASM.stations[i].id === 'A90' && dwell > 0.55) car.root.visible = false;                           // into the case
+  }
+  // robots
+  for (const { rb, i } of ROBOTS) {
+    const s = C - i, active = s >= 0 && u >= MOVE, ur = active ? dwell : 0;
+    const place = tmpV2.set(stX(i), ASM.y + 0.058, ASM.z);
+    pp(ur, rb.home, rb.pick, place, tmpV); rb.reach(tmpV);
+    rb.carry.visible = active && ur > 0.24 && ur < 0.7;
+  }
+  // EOL
+  const eolActive = C - 7 >= 0 && u >= MOVE;
+  for (const r of EOL_ROLLERS) r.rotation.y += eolActive ? 0.9 : 0;
+  // packed cases on the outfeed
+  for (let k = 0; k < BOXES.length; k++) {
+    const s = C - 8 - k; const b = BOXES[k];
+    if (s < 0) { b.visible = false; continue; }
+    const age = (t - (s + 8) * CYC - CYC * 0.6) / CYC;          // cycles since packing
+    if (age < 0) { b.visible = false; continue; }
+    const x = OUTFEED.x0 + age * 0.9; b.visible = x < OUTFEED.x1; b.position.set(Math.min(x, OUTFEED.x1), ASM.y + 0.045, ASM.z);
+  }
+  const done = Math.max(0, C - 8 + (u > 0.6 ? 1 : 0));
+  if (done !== SIM.done) {
+    for (let s = SIM.done; s < done; s++) { if (hash(s + 11) < 0.016) { SIM.fails++; event('MFG', `EOL NG S/N VX${String(s + 1).padStart(6, '0')} 待機電流 ${(26 + hash(s) * 4).toFixed(1)} µA > 25 µA → 修理工程（基板交換）`); } else if (s % 6 === 0) event('MFG', `完成 S/N VX${String(s + 1).padStart(6, '0')} ${VAR[MIX[s % MIX.length]].name}（EOL 最高速 ${(trackSpeed(VAR[MIX[s % MIX.length]]).vmax * 3.6 * (0.98 + hash(s) * 0.04)).toFixed(1)} km/h・合格）`); }
+    SIM.done = done;
+  }
+  PALLET_STACK.scale.y = Math.max(0.001, (done % 48) / 48); PALLET_STACK.position.y = 0.15 + PALLET_STACK.scale.y / 2;
+  // EOL screen (every cycle)
+  if (C !== lastPack) {
+    lastPack = C; const s = C - 7, cv = eolScreen.material.map.image, g = cv.getContext('2d');
+    g.fillStyle = '#0b0e12'; g.fillRect(0, 0, cv.width, cv.height);
+    if (s >= 0) {
+      const v = VAR[MIX[s % MIX.length]], sp = trackSpeed(v).vmax * 3.6 * (0.98 + hash(s) * 0.04), ng = hash(s + 11) < 0.016;
+      g.fillStyle = '#909aa6'; g.font = '16px monospace'; g.fillText(`EOL  VX${String(s + 1).padStart(6, '0')}`, 12, 26);
+      g.fillStyle = '#e8ecf1'; g.font = 'bold 22px monospace'; g.fillText(`${sp.toFixed(1)} km/h`, 12, 60);
+      g.font = '16px monospace'; g.fillText(`SS 120±10ms ${(118 + hash(s + 3) * 5).toFixed(0)}`, 12, 88); g.fillText(`Iq ${ng ? (26 + hash(s) * 4).toFixed(1) : (12 + hash(s + 5) * 6).toFixed(1)} uA`, 12, 112);
+      g.fillStyle = ng ? '#ff5a52' : '#3ddc84'; g.font = 'bold 24px sans-serif'; g.fillText(ng ? 'NG' : 'OK', 190, 146);
+    }
+    eolScreen.material.map.needsUpdate = true;
+  }
+}
+function updateMolding(t) {
+  for (const m of MOLD) {
+    const tt = t / m.cycle + m.phase, k = Math.floor(tt), u = tt - k;
+    const close = u < 0.12 ? smooth(u / 0.12) : u < 0.72 ? 1 : u < 0.84 ? 1 - smooth((u - 0.72) / 0.12) : 0;
+    const xo = m.x - m.L * 0.3, xc = m.x - m.L * 0.05 - 0.27; m.moving.position.x = lerp(xo, xc, close);
+    m.lamp.material.emissive.setHex(u > 0.12 && u < 0.72 ? 0xfab219 : 0x33ff66);
+    m.drops.forEach((d, j) => { const f = (u - 0.84 - j * 0.015) / 0.12; d.position.y = f > 0 && f < 1 ? lerp(1.35, 0.5, f * f) : -5; d.position.x = m.x - m.L * 0.23 + (j - 2.5) * 0.06; });
+    m.fill.scale.y = 1 + (k % 40) * 4; m.fill.position.y = 0.45 + (k % 40) * 0.002;
+  }
+}
+function updateSMT(t) {
+  const n = D.smt.steps.length, per = D.smt.panel_cycle_s / SCALE, span = (SMT.x1 - SMT.x0) / n, travel = n * per;
+  const k0 = Math.floor(t / per);
+  SMT.boards.forEach((b, j) => {
+    const k = k0 - j, age = t - k * per; b.visible = k >= 0 && age < travel;
+    const st = Math.floor(age / per), f = age / per - st, x = SMT.x0 + span * (st + (f < 0.25 ? smooth(f / 0.25) : 1) - 0.5);
+    b.position.set(x, SMT.y + 0.03, SMT.z);
+  });
+  SMT.reflow.material.emissiveIntensity = 1.2 + Math.sin(t * 3) * 0.3;
+  SMT.aoi.material.emissiveIntensity = (t / per) % 1 > 0.3 && (t / per) % 1 < 0.6 ? 2.2 : 0;
+}
+function updateMisc(t, dt) {
+  PRINTERS.forEach(p => { const u = (t * 0.4 + p.ph) % 30 / 30; p.head.position.set(p.px + Math.sin(t * 7 + p.ph) * 0.3, 0.84 + u * 0.06, p.pz + Math.cos(t * 5.3 + p.ph) * 0.3); p.part.scale.y = 1 + u * 60; p.part.position.y = 0.81 + u * 0.03; });
+  PRESSES.forEach(p => { const u = (t / CYC + p.ph) % 1; p.ram.position.y = 1.6 - (u > 0.4 && u < 0.6 ? Math.sin((u - 0.4) / 0.2 * Math.PI) * 0.45 : 0); });
+  for (const a of AGVS) { const u = mod(t * 1.2 / a.len + a.off, 1), p = a.path.getPointAt(u), tg = a.path.getTangentAt(u); a.m.position.set(p.x, 0, p.z); a.m.rotation.y = Math.atan2(-tg.z, tg.x); }
+  for (const w of WALKERS) { const d = w.a.distanceTo(w.b), ph = mod(t * w.sp / d + w.off, 2), f = ph < 1 ? ph : 2 - ph; w.m.position.lerpVectors(w.a, w.b, f); w.m.rotation.y = ph < 1 ? 0 : Math.PI; }
+  // test course
+  let board = false;
+  for (const tc of TRACK_CARS) {
+    const sp = trackSpeed(tc.v), u0 = tc.s / TRACK.L; tc.s += sp.avg * dt * (0.97 + 0.06 * Math.sin(t * 0.7 + tc.lane0));
+    const laps = Math.floor(tc.s / TRACK.L - 0.22) + 1, lane = (tc.lane0 + laps) % 3;
+    const lp = TRACK.at(tc.s, lane);
+    tc.c.root.position.set(lp.x, lp.y + 0.002, lp.z); tc.c.root.rotation.y = lp.yaw;
+    if (Math.floor(tc.s / TRACK.L) > Math.floor(u0)) { tc.laps++; if (tc.lapStart) tc.last = t - tc.lapStart; tc.lapStart = t; board = true; }
+  }
+  if (board) drawBoard();
+}
+
+// ============================================================ labels
+const projV = V(0, 0, 0);
+function updateLabels(cam) {
+  const W = innerWidth, H = innerHeight;
+  for (const l of labels) {
+    if (l.view !== VIEW || l.el.dataset.hide) { if (l.el.style.display !== 'none') l.el.style.display = 'none'; continue; }
+    projV.copy(l.p); if (l.obj) projV.applyMatrix4(l.obj.matrixWorld);
+    const d = cam.position.distanceTo(projV); projV.project(cam);
+    const vis = projV.z < 1 && Math.abs(projV.x) < 1.1 && Math.abs(projV.y) < 1.1 && d < l.maxDist;
+    if (l === cgLabel) { if (!cgMark.visible) { l.el.style.display = 'none'; continue; } }
+    else if (sLabels.includes(l) && !S.env) { l.el.style.display = 'none'; continue; }
+    l.el.style.display = vis ? '' : 'none';
+    if (vis) l.el.style.transform = `translate(-50%,-100%) translate(${((projV.x + 1) / 2 * W).toFixed(1)}px,${((1 - projV.y) / 2 * H).toFixed(1)}px)`;
+  }
+}
+
+// ============================================================ main loop
+function hudUpdate() {
+  document.getElementById('hDone').textContent = `${SIM.done.toLocaleString()} 台`;
+  document.getElementById('hFpy').textContent = SIM.done ? `${((1 - SIM.fails / SIM.done) * 100).toFixed(1)}%` : '—';
+  document.getElementById('hOee').textContent = `${(86.4 + Math.sin(SIM.t / 40) * 1.3).toFixed(1)}%`;
+  document.getElementById('hFg').textContent = `${(BIZ.fg + SIM.done).toLocaleString()} 台`;
+  document.getElementById('hBl').textContent = `${BIZ.backlog.toLocaleString()} 台`;
+}
+LBM.setBody('STD');
+SIM.done = Math.max(0, Math.floor(SIM.t / CYC) - 8);
+buildStudioCar(VARIANTS[0]);
+goCam(0, true);
+const clockT = new THREE.Clock();
+let paused = false;
+function frame() {
+  const dt = Math.min(clockT.getDelta(), 0.1);
+  if (!paused) SIM.t += dt;
+  const t = SIM.t; SIM.frame++;
+  bizTick(paused ? 0 : dt);
+  cfdTick(VIEW === 'cfd' ? 10 : 2);
+  if (VIEW === 'campus') {
+    if (tween) { tween.u = Math.min(1, tween.u + dt / 1.4); const f = smooth(tween.u); camera.position.lerpVectors(tween.p0, tween.p1, f); controls.target.lerpVectors(tween.t0, tween.t1, f); if (tween.u >= 1) tween = null; }
+    if (FOLLOW) {
+      const r = FOLLOW.car.c.root, yaw = r.rotation.y, want = V(r.position.x - Math.cos(yaw) * 0.62, r.position.y + 0.3, r.position.z + Math.sin(yaw) * 0.62);
+      camera.position.copy(want); controls.target.set(r.position.x + Math.cos(yaw) * 0.3, r.position.y + 0.02, r.position.z - Math.sin(yaw) * 0.3);
+    }
+    controls.update();
+    updateLine(t); updateMolding(t); updateSMT(t); updateMisc(t, paused ? 0 : dt);
+    if (SIM.frame % 3 === 0) renderDR(t);
+    if (SIM.frame % 6 === 0) cfdScreen();
+    if (SIM.frame % 15 === 0) hudUpdate();
+    renderer.render(scene, camera); updateLabels(camera);
+  } else if (VIEW === 'studio') {
+    if (S.spin) turn.rotation.y += dt * 0.35;
+    sCtl.update(); turn.updateMatrixWorld(true);
+    renderer.render(studio, sCam); updateLabels(sCam);
+  } else if (VIEW === 'cfd') { if (SIM.frame % 2 === 0) cfdDraw(); }
+  requestAnimationFrame(frame);
+}
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  for (const c of [camera, sCam]) { c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix(); }
+  fitStudio();
+});
+addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('show'); });
+// deep links: ?view=studio&cam=8&t=120
+{
+  const q = new URLSearchParams(location.search);
+  if (q.get('t')) SIM.t = +q.get('t');
+  if (q.get('cam')) goCam(+q.get('cam'), true);
+  setView(q.get('view') || 'campus');
+}
+window.__sim = { camera, controls, POOL, TRACK_CARS, SIM, setView, goCam, LBM, CFDUI, COST, selectPart, S, applyExplode, updateCG, pause: v => paused = v, get view() { return VIEW; } };
+event('MFG', `1 直 稼働開始：組立ライン A10–A90・成形 6 台・SMT（${PHASE.id} 量産試作ロット）`);
+hudUpdate();
+requestAnimationFrame(() => { document.getElementById('load').style.display = 'none'; frame(); });
+
+</script>
+</body>
+</html>

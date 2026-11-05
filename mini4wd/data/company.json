@@ -1,0 +1,2984 @@
+{
+ "meta": {
+  "company": "VELO WORKS（架空）",
+  "company_en": "VELO WORKS (fictional)",
+  "product": "VELO-32 KESTREL",
+  "chassis": "VX-1",
+  "category": "1/32 4WD レーサー（ミニ四駆タイプ）",
+  "disclaimer": "架空ブランドのオリジナル設計によるデモです。「ミニ四駆」は株式会社タミヤの登録商標で、本デモはタミヤとは無関係です。タミヤ公認競技会規則では自作シャーシ・自作ボディ、タミヤ製以外のモーター・電池は認められないため、本製品は公認レースの対象外です（コース互換のため寸法・重量は規則の枠内で設計）。数値はすべてデモ用の代表値です。",
+  "currency": "JPY",
+  "program_weeks": 52,
+  "now_week": 40,
+  "takt_s": 24,
+  "shift_h": 7.5,
+  "days_per_week": 5,
+  "demo_time_scale": 4
+ },
+ "regulation": {
+  "source": "タミヤ ミニ四駆公認競技会規則（2026年版）の車体寸法・重量",
+  "url": "https://tamiya.com/japan/mini4wd/regulation.html",
+  "length_max": 165,
+  "width_max": 105,
+  "height_max": 70,
+  "ground_min": 1.0,
+  "tire_dia": [
+   22,
+   35
+  ],
+  "tire_width": [
+   8,
+   26
+  ],
+  "weight_min_g": 90
+ },
+ "design": {
+  "length": 158.0,
+  "width_body": 90.0,
+  "width_rollers": 103.0,
+  "height": 43.5,
+  "wheelbase": 82.0,
+  "track": 80.0,
+  "tire_dia": 26.0,
+  "tire_width": 10.0,
+  "ground": 1.6,
+  "roller_dia": 13.0,
+  "battery": "単3形 ×2（別売）",
+  "battery_mass_g": 23.0,
+  "battery_count": 2
+ },
+ "motors": [
+  {
+   "id": "M130-STD",
+   "name": "130サイズ DCモーター スタンダード",
+   "no_load_rpm": 12500,
+   "stall_mNm": 1.9,
+   "no_load_A": 0.35,
+   "stall_A": 3.6,
+   "mass_g": 17.5,
+   "cost": 110,
+   "supplier": "SUP-01"
+  },
+  {
+   "id": "M130-HRV",
+   "name": "130サイズ DCモーター ハイレブ",
+   "no_load_rpm": 17500,
+   "stall_mNm": 1.7,
+   "no_load_A": 0.55,
+   "stall_A": 4.4,
+   "mass_g": 17.5,
+   "cost": 165,
+   "supplier": "SUP-01"
+  },
+  {
+   "id": "M130-TRQ",
+   "name": "130サイズ DCモーター トルク",
+   "no_load_rpm": 13800,
+   "stall_mNm": 2.6,
+   "no_load_A": 0.45,
+   "stall_A": 5.2,
+   "mass_g": 18.0,
+   "cost": 165,
+   "supplier": "SUP-01"
+  }
+ ],
+ "gears": [
+  {
+   "id": "G50",
+   "ratio": 5.0,
+   "name": "5:1（加速重視）",
+   "stack": "ピニオン8T → カウンター20T/12T → スパー/クラウン"
+  },
+  {
+   "id": "G42",
+   "ratio": 4.2,
+   "name": "4.2:1（バランス）",
+   "stack": "ピニオン8T → カウンター17T/12T → スパー/クラウン"
+  },
+  {
+   "id": "G37",
+   "ratio": 3.7,
+   "name": "3.7:1（最高速重視）",
+   "stack": "ピニオン9T → カウンター17T/12T → スパー/クラウン"
+  }
+ ],
+ "bodies": [
+  {
+   "id": "STD",
+   "pn": "VW-BDY-110",
+   "name": "KESTREL スタンダード",
+   "profile": "std",
+   "wing": false
+  },
+  {
+   "id": "AERO",
+   "pn": "VW-BDY-111",
+   "name": "KESTREL エアロ（ウィング付）",
+   "profile": "std",
+   "wing": true
+  },
+  {
+   "id": "LOW",
+   "pn": "VW-BDY-112",
+   "name": "KESTREL ロードラッグ",
+   "profile": "low",
+   "wing": false
+  }
+ ],
+ "variants": [
+  {
+   "id": "KST-STD",
+   "name": "KESTREL STD",
+   "body": "STD",
+   "motor": "M130-STD",
+   "gear": "G42",
+   "color": "#d23b2f",
+   "msrp": 4980
+  },
+  {
+   "id": "KST-AERO",
+   "name": "KESTREL AERO",
+   "body": "AERO",
+   "motor": "M130-TRQ",
+   "gear": "G42",
+   "color": "#1f5fbf",
+   "msrp": 5480
+  },
+  {
+   "id": "KST-LOW",
+   "name": "KESTREL LOW-DRAG",
+   "body": "LOW",
+   "motor": "M130-HRV",
+   "gear": "G37",
+   "color": "#e8b10e",
+   "msrp": 5480
+  }
+ ],
+ "parts": [
+  {
+   "pn": "VW-CHS-100",
+   "name": "シャーシ VX-1",
+   "en": "Chassis VX-1",
+   "qty": 1,
+   "make_buy": "内製",
+   "material": "PC/ABS（耐衝撃）",
+   "process": "射出成形",
+   "weight_g": 18.0,
+   "unit_cost": null,
+   "mold": "MD-100",
+   "machine": "M01",
+   "cavities": 2,
+   "cycle_s": 32,
+   "resin_yen_kg": 620,
+   "runner_ratio": 0.14,
+   "mold_cost": 6800000,
+   "mold_life_shots": 300000,
+   "cc": [
+    {
+     "char": "車軸受け穴径",
+     "spec": "φ6.00",
+     "tol": "+0.03/0",
+     "cls": "CC"
+    },
+    {
+     "char": "ホイールベース（軸間距離）",
+     "spec": "82.00",
+     "tol": "±0.05",
+     "cls": "CC"
+    },
+    {
+     "char": "モーター室幅",
+     "spec": "20.40",
+     "tol": "±0.05",
+     "cls": "SC"
+    }
+   ],
+   "group": "chassis",
+   "station": "A10"
+  },
+  {
+   "pn": "VW-TRM-101",
+   "name": "電池端子セット（前・後）",
+   "en": "Battery terminal set",
+   "qty": 1,
+   "make_buy": "購入",
+   "material": "SUS301-CSP",
+   "process": "プレス",
+   "weight_g": 0.8,
+   "unit_cost": 8,
+   "supplier": "SUP-05",
+   "lead_w": 3,
+   "group": "chassis",
+   "station": "A10"
+  },
+  {
+   "pn": "VW-SW-102",
+   "name": "電源スイッチ",
+   "en": "Power switch",
+   "qty": 1,
+   "make_buy": "購入",
+   "material": "POM＋りん青銅",
+   "process": "成形＋プレス",
+   "weight_g": 0.9,
+   "unit_cost": 12,
+   "supplier": "SUP-05",
+   "lead_w": 3,
+   "group": "chassis",
+   "station": "A10"
+  },
+  {
+   "pn": "VW-BRG-171",
+   "name": "ボールベアリング 1150（車軸用）",
+   "en": "Ball bearing 1150",
+   "qty": 4,
+   "make_buy": "購入",
+   "material": "SUJ2",
+   "process": "購入品",
+   "weight_g": 0.5,
+   "unit_cost": 12,
+   "supplier": "SUP-02",
+   "lead_w": 6,
+   "group": "drive",
+   "station": "A20"
+  },
+  {
+   "pn": "VW-SFT-170",
+   "name": "車軸 φ2×60",
+   "en": "Axle φ2×60",
+   "qty": 2,
+   "make_buy": "購入",
+   "material": "SUS420J2 焼入れ",
+   "process": "センタレス研削",
+   "weight_g": 1.5,
+   "unit_cost": 9,
+   "supplier": "SUP-03",
+   "lead_w": 4,
+   "cc": [
+    {
+     "char": "軸径",
+     "spec": "φ2.000",
+     "tol": "0/−0.005",
+     "cls": "CC"
+    }
+   ],
+   "group": "drive",
+   "station": "A20"
+  },
+  {
+   "pn": "VW-PRP-172",
+   "name": "プロペラシャフト",
+   "en": "Propeller shaft",
+   "qty": 1,
+   "make_buy": "購入",
+   "material": "SUS304＋POMジョイント",
+   "process": "購入品",
+   "weight_g": 1.2,
+   "unit_cost": 10,
+   "supplier": "SUP-03",
+   "lead_w": 4,
+   "group": "drive",
+   "station": "A20"
+  },
+  {
+   "pn": "VW-GER-161",
+   "name": "カウンターギヤ",
+   "en": "Counter gear",
+   "qty": 1,
+   "make_buy": "内製",
+   "material": "POM（摺動グレード）",
+   "process": "射出成形（ファミリー金型）",
+   "weight_g": 1.1,
+   "unit_cost": null,
+   "mold": "MD-160",
+   "machine": "M05",
+   "cavities": 4,
+   "cycle_s": 22,
+   "resin_yen_kg": 480,
+   "runner_ratio": 0.35,
+   "mold_cost": 5200000,
+   "mold_life_shots": 500000,
+   "cc": [
+    {
+     "char": "歯形（OBD）",
+     "spec": "JIS N8 相当",
+     "tol": "—",
+     "cls": "SC"
+    }
+   ],
+   "group": "drive",
+   "station": "A20"
+  },
+  {
+   "pn": "VW-GER-162",
+   "name": "クラウンギヤ",
+   "en": "Crown gear",
+   "qty": 1,
+   "make_buy": "内製",
+   "material": "POM（摺動グレード）",
+   "process": "射出成形（ファミリー金型）",
+   "weight_g": 0.9,
+   "unit_cost": null,
+   "mold": "MD-160",
+   "machine": "M05",
+   "cavities": 4,
+   "cycle_s": 22,
+   "resin_yen_kg": 480,
+   "runner_ratio": 0.35,
+   "mold_cost": 0,
+   "mold_life_shots": 500000,
+   "group": "drive",
+   "station": "A20"
+  },
+  {
+   "pn": "VW-GER-163",
+   "name": "スパーギヤ（前後）",
+   "en": "Spur gear F/R",
+   "qty": 2,
+   "make_buy": "内製",
+   "material": "POM（摺動グレード）",
+   "process": "射出成形（ファミリー金型）",
+   "weight_g": 1.3,
+   "unit_cost": null,
+   "mold": "MD-160",
+   "machine": "M05",
+   "cavities": 8,
+   "cycle_s": 22,
+   "resin_yen_kg": 480,
+   "runner_ratio": 0.35,
+   "mold_cost": 0,
+   "mold_life_shots": 500000,
+   "group": "drive",
+   "station": "A20"
+  },
+  {
+   "pn": "VW-PCB-190",
+   "name": "制御基板 ASSY「VX-Link」",
+   "en": "Control board assy VX-Link",
+   "qty": 1,
+   "make_buy": "内製",
+   "material": "FR-4 0.8t 2層",
+   "process": "SMT（社内ライン）",
+   "weight_g": 3.4,
+   "unit_cost": null,
+   "smt": true,
+   "cc": [
+    {
+     "char": "ソフトスタート立上り時間",
+     "spec": "120 ms",
+     "tol": "±10 ms",
+     "cls": "SC"
+    },
+    {
+     "char": "待機電流",
+     "spec": "≤ 25 µA",
+     "tol": "—",
+     "cls": "SC"
+    }
+   ],
+   "group": "electronics",
+   "station": "A30"
+  },
+  {
+   "pn": "VW-MAG-191",
+   "name": "回転検出用磁石 φ2×1",
+   "en": "Sensor magnet",
+   "qty": 1,
+   "make_buy": "購入",
+   "material": "ネオジム N35 Niめっき",
+   "process": "購入品",
+   "weight_g": 0.03,
+   "unit_cost": 5,
+   "supplier": "SUP-06",
+   "lead_w": 5,
+   "group": "electronics",
+   "station": "A30"
+  },
+  {
+   "pn": "VW-MTR-180",
+   "name": "モーター（130サイズ・購入品）",
+   "en": "Motor 130-size (purchased)",
+   "qty": 1,
+   "make_buy": "購入",
+   "material": "—",
+   "process": "購入品＋ピニオン圧入（サブ組立）",
+   "weight_g": 17.5,
+   "unit_cost": 110,
+   "supplier": "SUP-01",
+   "lead_w": 4,
+   "cc": [
+    {
+     "char": "無負荷回転数（受入）",
+     "spec": "12,500 rpm",
+     "tol": "±8%",
+     "cls": "SC"
+    }
+   ],
+   "group": "motor",
+   "station": "A40"
+  },
+  {
+   "pn": "VW-PIN-181",
+   "name": "ピニオンギヤ 8T",
+   "en": "Pinion 8T",
+   "qty": 1,
+   "make_buy": "購入",
+   "material": "黄銅 C3604",
+   "process": "切削",
+   "weight_g": 0.3,
+   "unit_cost": 6,
+   "supplier": "SUP-03",
+   "lead_w": 4,
+   "group": "motor",
+   "station": "A40"
+  },
+  {
+   "pn": "VW-WHL-120",
+   "name": "ホイール 26mm 用",
+   "en": "Wheel",
+   "qty": 4,
+   "make_buy": "内製",
+   "material": "POM",
+   "process": "射出成形",
+   "weight_g": 1.4,
+   "unit_cost": null,
+   "mold": "MD-120",
+   "machine": "M03",
+   "cavities": 8,
+   "cycle_s": 18,
+   "resin_yen_kg": 480,
+   "runner_ratio": 0.25,
+   "mold_cost": 3600000,
+   "mold_life_shots": 800000,
+   "cc": [
+    {
+     "char": "軸穴径（圧入）",
+     "spec": "φ1.95",
+     "tol": "±0.01",
+     "cls": "CC"
+    },
+    {
+     "char": "振れ",
+     "spec": "≤ 0.05",
+     "tol": "—",
+     "cls": "SC"
+    }
+   ],
+   "group": "wheels",
+   "station": "A50"
+  },
+  {
+   "pn": "VW-TIR-130",
+   "name": "タイヤ 26mm（ローハイト）",
+   "en": "Tire 26 mm",
+   "qty": 4,
+   "make_buy": "内製",
+   "material": "TPE（ショアA60）",
+   "process": "射出成形",
+   "weight_g": 2.1,
+   "unit_cost": null,
+   "mold": "MD-130",
+   "machine": "M04",
+   "cavities": 8,
+   "cycle_s": 26,
+   "resin_yen_kg": 900,
+   "runner_ratio": 0.2,
+   "mold_cost": 3200000,
+   "mold_life_shots": 600000,
+   "cc": [
+    {
+     "char": "外径",
+     "spec": "φ26.00",
+     "tol": "±0.10",
+     "cls": "CC"
+    },
+    {
+     "char": "硬度",
+     "spec": "A60",
+     "tol": "±3",
+     "cls": "SC"
+    }
+   ],
+   "group": "wheels",
+   "station": "A50"
+  },
+  {
+   "pn": "VW-STF-150",
+   "name": "フロントローラーステー",
+   "en": "Front roller stay",
+   "qty": 1,
+   "make_buy": "内製",
+   "material": "GFRP 1.5t",
+   "process": "CNCルーター加工",
+   "weight_g": 3.2,
+   "unit_cost": null,
+   "machine_rate": 4200,
+   "cycle_s": 40,
+   "sheet_yen": 14,
+   "group": "rollers",
+   "station": "A60"
+  },
+  {
+   "pn": "VW-STR-151",
+   "name": "リヤローラーステー",
+   "en": "Rear roller stay",
+   "qty": 1,
+   "make_buy": "内製",
+   "material": "GFRP 1.5t",
+   "process": "CNCルーター加工",
+   "weight_g": 3.6,
+   "unit_cost": null,
+   "machine_rate": 4200,
+   "cycle_s": 44,
+   "sheet_yen": 16,
+   "group": "rollers",
+   "station": "A60"
+  },
+  {
+   "pn": "VW-ROL-140",
+   "name": "ローラー 13mm",
+   "en": "Roller 13 mm",
+   "qty": 4,
+   "make_buy": "内製",
+   "material": "POM",
+   "process": "射出成形",
+   "weight_g": 1.0,
+   "unit_cost": null,
+   "mold": "MD-140",
+   "machine": "M06",
+   "cavities": 16,
+   "cycle_s": 20,
+   "resin_yen_kg": 480,
+   "runner_ratio": 0.3,
+   "mold_cost": 2800000,
+   "mold_life_shots": 1000000,
+   "group": "rollers",
+   "station": "A60"
+  },
+  {
+   "pn": "VW-BRG-141",
+   "name": "ボールベアリング 850（ローラー用）",
+   "en": "Ball bearing 850",
+   "qty": 4,
+   "make_buy": "購入",
+   "material": "SUJ2",
+   "process": "購入品",
+   "weight_g": 0.4,
+   "unit_cost": 12,
+   "supplier": "SUP-02",
+   "lead_w": 6,
+   "group": "rollers",
+   "station": "A60"
+  },
+  {
+   "pn": "VW-SCR-195",
+   "name": "ねじ・ナット類（M2）",
+   "en": "Screws & nuts M2",
+   "qty": 1,
+   "make_buy": "購入",
+   "material": "SWCH 三価クロメート",
+   "process": "購入品",
+   "weight_g": 4.6,
+   "unit_cost": 14,
+   "supplier": "SUP-03",
+   "lead_w": 2,
+   "cc": [
+    {
+     "char": "締付トルク（ステー）",
+     "spec": "0.18 N·m",
+     "tol": "±0.02",
+     "cls": "SC"
+    }
+   ],
+   "group": "rollers",
+   "station": "A60"
+  },
+  {
+   "pn": "VW-BDY-110",
+   "name": "ボディ KESTREL",
+   "en": "Body KESTREL",
+   "qty": 1,
+   "make_buy": "内製",
+   "material": "ABS（原着）",
+   "process": "射出成形",
+   "weight_g": 11.5,
+   "unit_cost": null,
+   "mold": "MD-110",
+   "machine": "M02",
+   "cavities": 2,
+   "cycle_s": 28,
+   "resin_yen_kg": 380,
+   "runner_ratio": 0.18,
+   "mold_cost": 5600000,
+   "mold_life_shots": 300000,
+   "cc": [
+    {
+     "char": "肉厚",
+     "spec": "1.00",
+     "tol": "±0.05",
+     "cls": "SC"
+    },
+    {
+     "char": "外観（ヒケ・ウェルド）",
+     "spec": "限度見本",
+     "tol": "—",
+     "cls": "SC"
+    }
+   ],
+   "group": "body",
+   "station": "A70"
+  },
+  {
+   "pn": "VW-DCL-196",
+   "name": "ステッカー",
+   "en": "Decal sheet",
+   "qty": 1,
+   "make_buy": "購入",
+   "material": "PVC 0.08t",
+   "process": "オフセット印刷",
+   "weight_g": 0.5,
+   "unit_cost": 18,
+   "supplier": "SUP-07",
+   "lead_w": 3,
+   "group": "body",
+   "station": "A70"
+  },
+  {
+   "pn": "VW-PKG-200",
+   "name": "パッケージ一式（化粧箱・トレイ・取説・シュリンク）",
+   "en": "Packaging set",
+   "qty": 1,
+   "make_buy": "購入",
+   "material": "コートボール・PET",
+   "process": "印刷・真空成形",
+   "weight_g": 48.0,
+   "unit_cost": 95,
+   "supplier": "SUP-07",
+   "lead_w": 3,
+   "group": "package",
+   "station": "A90",
+   "ship_only": true
+  }
+ ],
+ "pcb_bom": [
+  {
+   "ref": "U1",
+   "part": "BLE SoC（Cortex-M4F・技適取得モジュール相当）",
+   "pkg": "QFN48",
+   "qty": 1,
+   "cost": 160,
+   "lead_w": 12
+  },
+  {
+   "ref": "U2",
+   "part": "6軸 IMU",
+   "pkg": "LGA14",
+   "qty": 1,
+   "cost": 85,
+   "lead_w": 10
+  },
+  {
+   "ref": "U3",
+   "part": "ホールセンサ（回転検出）",
+   "pkg": "SOT23",
+   "qty": 1,
+   "cost": 12,
+   "lead_w": 8
+  },
+  {
+   "ref": "Q1",
+   "part": "Nch MOSFET 20V/30A（モーター駆動・ソフトスタート）",
+   "pkg": "DFN3x3",
+   "qty": 1,
+   "cost": 18,
+   "lead_w": 8
+  },
+  {
+   "ref": "U4",
+   "part": "昇降圧 DC-DC 3.3V",
+   "pkg": "WLCSP",
+   "qty": 1,
+   "cost": 42,
+   "lead_w": 10
+  },
+  {
+   "ref": "L1",
+   "part": "インダクタ 1µH",
+   "pkg": "2016",
+   "qty": 1,
+   "cost": 6,
+   "lead_w": 6
+  },
+  {
+   "ref": "ANT1",
+   "part": "2.4GHz チップアンテナ",
+   "pkg": "3216",
+   "qty": 1,
+   "cost": 14,
+   "lead_w": 8
+  },
+  {
+   "ref": "D1",
+   "part": "TVS（逆接・サージ保護）",
+   "pkg": "SOD323",
+   "qty": 1,
+   "cost": 4,
+   "lead_w": 6
+  },
+  {
+   "ref": "LED1",
+   "part": "RGB LED（状態表示）",
+   "pkg": "0606",
+   "qty": 1,
+   "cost": 6,
+   "lead_w": 6
+  },
+  {
+   "ref": "C1–C14",
+   "part": "積層セラミックコンデンサ",
+   "pkg": "0402",
+   "qty": 14,
+   "cost": 0.6,
+   "lead_w": 6
+  },
+  {
+   "ref": "R1–R9",
+   "part": "チップ抵抗",
+   "pkg": "0402",
+   "qty": 9,
+   "cost": 0.3,
+   "lead_w": 4
+  },
+  {
+   "ref": "J1",
+   "part": "モーター・電池接続パッド",
+   "pkg": "—",
+   "qty": 1,
+   "cost": 3,
+   "lead_w": 4
+  },
+  {
+   "ref": "PCB",
+   "part": "生基板 32×14mm FR-4 0.8t 2層（8面付け）",
+   "pkg": "—",
+   "qty": 1,
+   "cost": 28,
+   "lead_w": 4
+  }
+ ],
+ "firmware": {
+  "id": "FW-VX-LINK",
+  "version": "1.3.0",
+  "features": [
+   "ソフトスタート（120 ms ランプ、突入電流抑制）",
+   "過電流保護（6.0 A・200 µs）",
+   "電池電圧監視・ローバッテリー表示",
+   "テレメトリ 200 Hz（IMU・車輪回転・電流）を BLE でアプリへ",
+   "コースレイアウト自動推定（IMU＋車輪回転）",
+   "OTA 更新（署名付き）"
+  ],
+  "aspice_target": "Automotive SPICE 相当の V字プロセスを社内適用（CL2 目標）"
+ },
+ "molding": [
+  {
+   "id": "M01",
+   "tonnage": 100,
+   "mold": "MD-100",
+   "parts": [
+    "VW-CHS-100"
+   ],
+   "color": "#3a3f46"
+  },
+  {
+   "id": "M02",
+   "tonnage": 100,
+   "mold": "MD-110",
+   "parts": [
+    "VW-BDY-110"
+   ],
+   "color": "#d23b2f"
+  },
+  {
+   "id": "M03",
+   "tonnage": 60,
+   "mold": "MD-120",
+   "parts": [
+    "VW-WHL-120"
+   ],
+   "color": "#e8e8e8"
+  },
+  {
+   "id": "M04",
+   "tonnage": 60,
+   "mold": "MD-130",
+   "parts": [
+    "VW-TIR-130"
+   ],
+   "color": "#1c1d20"
+  },
+  {
+   "id": "M05",
+   "tonnage": 60,
+   "mold": "MD-160",
+   "parts": [
+    "VW-GER-161",
+    "VW-GER-162",
+    "VW-GER-163"
+   ],
+   "color": "#f2f0e8"
+  },
+  {
+   "id": "M06",
+   "tonnage": 60,
+   "mold": "MD-140",
+   "parts": [
+    "VW-ROL-140"
+   ],
+   "color": "#f2f0e8"
+  }
+ ],
+ "molding_rate_yen_h": {
+  "60": 2100,
+  "100": 2600
+ },
+ "smt": {
+  "panel_up": 8,
+  "panel_cycle_s": 45,
+  "line_rate_yen_h": 18000,
+  "steps": [
+   {
+    "id": "S10",
+    "name": "はんだ印刷"
+   },
+   {
+    "id": "S20",
+    "name": "SPI（はんだ検査）"
+   },
+   {
+    "id": "S30",
+    "name": "高速マウンター"
+   },
+   {
+    "id": "S40",
+    "name": "異形マウンター"
+   },
+   {
+    "id": "S50",
+    "name": "リフロー（窒素）"
+   },
+   {
+    "id": "S60",
+    "name": "AOI（外観検査）"
+   },
+   {
+    "id": "S70",
+    "name": "分割・FW書込・機能検査"
+   }
+  ]
+ },
+ "assembly": {
+  "line_rate_yen_h": 4200,
+  "operator_rate_yen_h": 3200,
+  "operators": 3,
+  "stations": [
+   {
+    "id": "A10",
+    "name": "シャーシ投入・端子・スイッチ",
+    "resource": "SCARA ロボット＋ビジョン",
+    "ops": [
+     {
+      "d": "シャーシ供給・位置決め",
+      "t": 6.2
+     },
+     {
+      "d": "電池端子圧入（荷重監視）",
+      "t": 7.4
+     },
+     {
+      "d": "スイッチ組付",
+      "t": 5.1
+     }
+    ]
+   },
+   {
+    "id": "A20",
+    "name": "駆動系（軸受・車軸・ギヤ）",
+    "resource": "SCARA ロボット×2",
+    "ops": [
+     {
+      "d": "軸受 ×4 圧入",
+      "t": 6.8
+     },
+     {
+      "d": "車軸・スパーギヤ・クラウン",
+      "t": 7.9
+     },
+     {
+      "d": "カウンター・プロペラシャフト",
+      "t": 5.4
+     }
+    ]
+   },
+   {
+    "id": "A30",
+    "name": "制御基板・磁石",
+    "resource": "SCARA ロボット＋はんだ付けロボット",
+    "ops": [
+     {
+      "d": "基板装着",
+      "t": 5.6
+     },
+     {
+      "d": "端子はんだ付け（温度監視）",
+      "t": 9.8
+     },
+     {
+      "d": "磁石圧入（スパーギヤ）",
+      "t": 3.2
+     }
+    ]
+   },
+   {
+    "id": "A40",
+    "name": "モーター組付",
+    "resource": "SCARA ロボット",
+    "ops": [
+     {
+      "d": "モーター（ピニオン圧入済）装着",
+      "t": 6.4
+     },
+     {
+      "d": "バックラッシ確認（トルク波形）",
+      "t": 8.6
+     }
+    ]
+   },
+   {
+    "id": "A50",
+    "name": "ホイール・タイヤ圧入",
+    "resource": "サーボプレス×4",
+    "ops": [
+     {
+      "d": "ホイール＋タイヤ サブ組立品 ×4 圧入",
+      "t": 12.2
+     },
+     {
+      "d": "振れ測定",
+      "t": 5.8
+     }
+    ]
+   },
+   {
+    "id": "A60",
+    "name": "ローラーステー・ローラー",
+    "resource": "ねじ締めロボット（トルク管理）",
+    "ops": [
+     {
+      "d": "ステー前後 締結（M2 ×6）",
+      "t": 11.6
+     },
+     {
+      "d": "ローラー ×4（ベアリング入り）締結",
+      "t": 7.8
+     }
+    ]
+   },
+   {
+    "id": "A70",
+    "name": "ボディ・ステッカー",
+    "resource": "作業者",
+    "ops": [
+     {
+      "d": "ボディ装着・クリップ",
+      "t": 8.4
+     },
+     {
+      "d": "ステッカー貼付（治具）",
+      "t": 10.2
+     }
+    ]
+   },
+   {
+    "id": "A80",
+    "name": "EOL 検査",
+    "resource": "ローラーダイナモ試験機",
+    "ops": [
+     {
+      "d": "回転・電流・ソフトスタート",
+      "t": 9.5
+     },
+     {
+      "d": "BLE 接続・IMU 校正",
+      "t": 8.0
+     },
+     {
+      "d": "トレーサビリティ記録（シリアル）",
+      "t": 1.5
+     }
+    ]
+   },
+   {
+    "id": "A90",
+    "name": "梱包",
+    "resource": "作業者＋シュリンク機",
+    "ops": [
+     {
+      "d": "トレイ・取説・箱詰め",
+      "t": 11.0
+     },
+     {
+      "d": "シュリンク・ラベル",
+      "t": 6.0
+     }
+    ]
+   }
+  ]
+ },
+ "installs": {
+  "A10": [
+   "VW-CHS-100",
+   "VW-TRM-101",
+   "VW-SW-102"
+  ],
+  "A20": [
+   "VW-BRG-171",
+   "VW-SFT-170",
+   "VW-PRP-172",
+   "VW-GER-161",
+   "VW-GER-162",
+   "VW-GER-163"
+  ],
+  "A30": [
+   "VW-PCB-190",
+   "VW-MAG-191"
+  ],
+  "A40": [
+   "VW-MTR-180",
+   "VW-PIN-181"
+  ],
+  "A50": [
+   "VW-WHL-120",
+   "VW-TIR-130"
+  ],
+  "A60": [
+   "VW-STF-150",
+   "VW-STR-151",
+   "VW-ROL-140",
+   "VW-BRG-141",
+   "VW-SCR-195"
+  ],
+  "A70": [
+   "VW-BDY-110",
+   "VW-DCL-196"
+  ],
+  "A80": [],
+  "A90": [
+   "VW-PKG-200"
+  ]
+ },
+ "cost_model": {
+  "overhead_rate": 0.18,
+  "logistics_per_unit": 35,
+  "warranty_per_unit": 20,
+  "target_cost": 1350,
+  "channel_margin": 0.4,
+  "tax_rate": 0.1,
+  "smt_process_per_board": null
+ },
+ "apqp": [
+  {
+   "id": "P0",
+   "name": "企画",
+   "start": 1,
+   "end": 6,
+   "gate": {
+    "id": "G0",
+    "name": "企画承認",
+    "week": 6,
+    "criteria": [
+     "市場・競合分析（コース互換性含む）",
+     "事業性（販売計画・目標原価 ¥1,350）",
+     "知財調査（商標・意匠・特許）",
+     "規則エンベロープの設計制約化"
+    ]
+   }
+  },
+  {
+   "id": "P1",
+   "name": "計画・定義",
+   "start": 4,
+   "end": 9,
+   "gate": {
+    "id": "G1",
+    "name": "開発着手",
+    "week": 9,
+    "criteria": [
+     "製品要求仕様書 PRD v1.0",
+     "設計目標（重量 ≤110 g 電池別、最高速、待機電流）",
+     "暫定 BOM・目標原価配分",
+     "特殊特性（CC/SC）初期リスト",
+     "日程・体制・予算承認"
+    ]
+   }
+  },
+  {
+   "id": "P2",
+   "name": "製品設計・開発",
+   "start": 9,
+   "end": 24,
+   "gate": {
+    "id": "G2",
+    "name": "設計凍結",
+    "week": 24,
+    "criteria": [
+     "DR1〜DR3 完了",
+     "DFMEA（AP=H の処置完了）",
+     "試作 PT1/PT2 評価",
+     "空力 CFD・走行試験",
+     "図面・3D データ リリース（PLM）"
+    ]
+   }
+  },
+  {
+   "id": "P3",
+   "name": "工程設計・開発",
+   "start": 20,
+   "end": 34,
+   "gate": {
+    "id": "G3",
+    "name": "量産準備承認",
+    "week": 34,
+    "criteria": [
+     "工程フロー・PFMEA",
+     "金型 T1 トライ・寸法測定",
+     "管理計画（量産試作版）",
+     "設備仕様・ライン配置",
+     "MSA 計画"
+    ]
+   }
+  },
+  {
+   "id": "P4",
+   "name": "製品・工程の妥当性確認",
+   "start": 32,
+   "end": 44,
+   "gate": {
+    "id": "G4",
+    "name": "量産移行承認",
+    "week": 44,
+    "criteria": [
+     "量産試作 PP（Run@Rate 300 台）",
+     "PPAP 18 要素 提出・承認",
+     "初期工程能力 Cpk ≥ 1.67（CC）/ 1.33（SC）",
+     "玩具安全・電波法・EMC 適合",
+     "包装・輸送試験"
+    ]
+   }
+  },
+  {
+   "id": "P5",
+   "name": "量産・フィードバック",
+   "start": 44,
+   "end": 52,
+   "gate": {
+    "id": "G5",
+    "name": "初期流動解除",
+    "week": 52,
+    "criteria": [
+     "SOP（W46）",
+     "初期流動管理 6 週間（全数 EOL＋抜取強化）",
+     "市場品質モニタリング",
+     "教訓（Lessons Learned）登録"
+    ]
+   }
+  }
+ ],
+ "design_reviews": [
+  {
+   "id": "DR1",
+   "name": "構想 DR",
+   "week": 11,
+   "status": "完了",
+   "scope": "コンセプト、レイアウト、規則エンベロープ、重量配分",
+   "decision": "承認（条件付き：ローラースパン 103 mm に修正）"
+  },
+  {
+   "id": "DR2",
+   "name": "詳細設計 DR",
+   "week": 18,
+   "status": "完了",
+   "scope": "図面、公差解析（ギヤ噛合い・軸間）、基板回路、DFMEA",
+   "decision": "承認"
+  },
+  {
+   "id": "DR3",
+   "name": "試作評価 DR",
+   "week": 24,
+   "status": "完了",
+   "scope": "PT2 評価（落下・耐久・走行・CFD 相関）",
+   "decision": "承認（ECN-0421 ボディ肉厚 0.9→1.0 mm）"
+  },
+  {
+   "id": "DR4",
+   "name": "工程設計 DR",
+   "week": 32,
+   "status": "完了",
+   "scope": "PFMEA、ライン能力、金型 T1、管理計画",
+   "decision": "承認"
+  },
+  {
+   "id": "DR5",
+   "name": "量産移行 DR",
+   "week": 43,
+   "status": "予定",
+   "scope": "PP 結果、PPAP、工程能力、法規適合",
+   "decision": "—"
+  }
+ ],
+ "ppap": [
+  {
+   "no": 1,
+   "name": "設計記録（図面・3D・仕様書）",
+   "status": "承認",
+   "owner": "機構設計"
+  },
+  {
+   "no": 2,
+   "name": "技術変更文書（ECN）",
+   "status": "承認",
+   "owner": "機構設計"
+  },
+  {
+   "no": 3,
+   "name": "技術承認（商品企画による承認）",
+   "status": "承認",
+   "owner": "商品企画"
+  },
+  {
+   "no": 4,
+   "name": "DFMEA",
+   "status": "承認",
+   "owner": "機構設計"
+  },
+  {
+   "no": 5,
+   "name": "工程フロー図",
+   "status": "承認",
+   "owner": "生産技術"
+  },
+  {
+   "no": 6,
+   "name": "PFMEA",
+   "status": "承認",
+   "owner": "生産技術"
+  },
+  {
+   "no": 7,
+   "name": "管理計画（量産版）",
+   "status": "審査中",
+   "owner": "品質保証"
+  },
+  {
+   "no": 8,
+   "name": "測定システム解析（MSA・GR&R）",
+   "status": "承認",
+   "owner": "品質保証"
+  },
+  {
+   "no": 9,
+   "name": "寸法測定結果（全 CC/SC・5 個×キャビ）",
+   "status": "承認",
+   "owner": "品質保証"
+  },
+  {
+   "no": 10,
+   "name": "材料・性能試験結果（DVP&R）",
+   "status": "審査中",
+   "owner": "品質保証"
+  },
+  {
+   "no": 11,
+   "name": "初期工程調査（Cpk）",
+   "status": "要処置",
+   "owner": "品質保証",
+   "note": "タイヤ外径 Cpk 1.21 → 8D-0037"
+  },
+  {
+   "no": 12,
+   "name": "有資格試験所文書",
+   "status": "承認",
+   "owner": "品質保証"
+  },
+  {
+   "no": 13,
+   "name": "外観承認報告書（AAR）",
+   "status": "承認",
+   "owner": "デザイン"
+  },
+  {
+   "no": 14,
+   "name": "製品サンプル",
+   "status": "提出済",
+   "owner": "品質保証"
+  },
+  {
+   "no": 15,
+   "name": "マスターサンプル",
+   "status": "提出済",
+   "owner": "品質保証"
+  },
+  {
+   "no": 16,
+   "name": "検査補助具（治具・ゲージ）",
+   "status": "承認",
+   "owner": "生産技術"
+  },
+  {
+   "no": 17,
+   "name": "固有要求事項（玩具安全 ST/EN 71/ASTM F963、電波法、RoHS）",
+   "status": "審査中",
+   "owner": "品質保証",
+   "note": "EN 71-3 結果待ち（W41）"
+  },
+  {
+   "no": 18,
+   "name": "部品提出保証書（PSW）",
+   "status": "未提出",
+   "owner": "品質保証"
+  }
+ ],
+ "dfmea": [
+  {
+   "item": "シャーシ 車軸受け",
+   "fm": "穴径過大でガタ",
+   "effect": "ギヤ噛合い不良・異音・速度低下",
+   "S": 6,
+   "cause": "金型摩耗・成形収縮ばらつき",
+   "O": 3,
+   "prev": "収縮率を考慮した金型補正、PC/ABS 選定",
+   "det": "全キャビ寸法測定（T1・量産）",
+   "D": 3,
+   "action": "",
+   "status": "完了",
+   "pn": "VW-CHS-100"
+  },
+  {
+   "item": "ギヤ列",
+   "fm": "歯飛び",
+   "effect": "走行不能",
+   "S": 7,
+   "cause": "カウンター軸のたわみ",
+   "O": 4,
+   "prev": "軸径・支持スパン見直し（DR2）",
+   "det": "100 h 耐久試験",
+   "D": 4,
+   "action": "軸受け部リブ追加",
+   "status": "完了",
+   "pn": "VW-GER-161"
+  },
+  {
+   "item": "ホイール",
+   "fm": "車軸から抜ける",
+   "effect": "走行中にタイヤ脱落（コース外へ飛散）",
+   "S": 8,
+   "cause": "圧入代不足",
+   "O": 3,
+   "prev": "圧入代 0.05 mm（ECN-0412）",
+   "det": "抜去力試験 ≥ 30 N（DVP&R-04）",
+   "D": 3,
+   "action": "",
+   "status": "完了",
+   "pn": "VW-WHL-120"
+  },
+  {
+   "item": "ボディ",
+   "fm": "落下で割れ",
+   "effect": "外観不良・鋭利な破片（安全）",
+   "S": 9,
+   "cause": "肉厚 0.9 mm では衝撃不足",
+   "O": 4,
+   "prev": "肉厚 1.0 mm・R 部 0.5 mm 以上（ECN-0421）",
+   "det": "落下試験 1 m ×10（EN 71-1 準拠）",
+   "D": 3,
+   "action": "肉厚変更済・再試験合格",
+   "status": "完了",
+   "pn": "VW-BDY-110"
+  },
+  {
+   "item": "制御基板",
+   "fm": "電池逆挿入で破損",
+   "effect": "発熱・焦げ臭（安全）",
+   "S": 10,
+   "cause": "逆接保護なし",
+   "O": 2,
+   "prev": "TVS＋MOSFET 逆接保護回路",
+   "det": "逆接 10 分試験（DVP&R-09）",
+   "D": 2,
+   "action": "",
+   "status": "完了",
+   "pn": "VW-PCB-190"
+  },
+  {
+   "item": "制御基板",
+   "fm": "突入電流でリセット",
+   "effect": "スタート直後に停止",
+   "S": 6,
+   "cause": "モーター起動電流で電圧降下",
+   "O": 5,
+   "prev": "ソフトスタート 120 ms（FW 1.3.0）",
+   "det": "EOL で立上り波形判定",
+   "D": 3,
+   "action": "",
+   "status": "完了",
+   "pn": "VW-PCB-190"
+  },
+  {
+   "item": "BLE 通信",
+   "fm": "コース上で切断",
+   "effect": "テレメトリ欠損（走行は継続）",
+   "S": 4,
+   "cause": "金属フェンス・人混みでの減衰",
+   "O": 5,
+   "prev": "バッファ保存→ピット再送",
+   "det": "実コース通信試験",
+   "D": 5,
+   "action": "アンテナ配置最適化",
+   "status": "実施中",
+   "pn": "VW-PCB-190"
+  },
+  {
+   "item": "ローラー",
+   "fm": "ベアリング脱落",
+   "effect": "コースアウト",
+   "S": 7,
+   "cause": "ローラー内径の圧入代ばらつき",
+   "O": 3,
+   "prev": "内径 Cpk 管理",
+   "det": "抜去力抜取試験",
+   "D": 4,
+   "action": "",
+   "status": "完了",
+   "pn": "VW-ROL-140"
+  },
+  {
+   "item": "磁石",
+   "fm": "誤飲（小部品）",
+   "effect": "重大な健康被害",
+   "S": 10,
+   "cause": "スパーギヤからの脱落",
+   "O": 2,
+   "prev": "圧入＋カシメ、ギヤ内に封入",
+   "det": "引張試験 50 N・小部品試験（EN 71-1）",
+   "D": 2,
+   "action": "",
+   "status": "完了",
+   "pn": "VW-MAG-191"
+  },
+  {
+   "item": "スイッチ",
+   "fm": "接点不良",
+   "effect": "電源が入らない",
+   "S": 5,
+   "cause": "接点ばね荷重不足",
+   "O": 3,
+   "prev": "りん青銅 0.15t",
+   "det": "5,000 回開閉試験",
+   "D": 4,
+   "action": "",
+   "status": "完了",
+   "pn": "VW-SW-102"
+  }
+ ],
+ "pfmea": [
+  {
+   "item": "M04 タイヤ成形",
+   "fm": "外径ばらつき",
+   "effect": "左右径差で直進性悪化",
+   "S": 6,
+   "cause": "TPE 乾燥不足・金型温度変動",
+   "O": 5,
+   "prev": "乾燥機 露点管理",
+   "det": "抜取 n=5/2h 外径測定",
+   "D": 4,
+   "action": "8D-0037：金型温調 ±1℃ 化、全キャビ測定",
+   "status": "実施中"
+  },
+  {
+   "item": "A10 端子圧入",
+   "fm": "圧入不足",
+   "effect": "接触不良・発熱",
+   "S": 7,
+   "cause": "圧入荷重不足",
+   "O": 3,
+   "prev": "サーボプレス荷重・変位監視",
+   "det": "全数 荷重波形判定（自動 NG 排出）",
+   "D": 2,
+   "action": "",
+   "status": "完了"
+  },
+  {
+   "item": "A30 はんだ付け",
+   "fm": "はんだ不足・ブリッジ",
+   "effect": "動作不良・短絡",
+   "S": 8,
+   "cause": "こて先温度・送り量",
+   "O": 3,
+   "prev": "温度監視・こて先寿命管理",
+   "det": "画像検査＋EOL 電流",
+   "D": 3,
+   "action": "",
+   "status": "完了"
+  },
+  {
+   "item": "A50 ホイール圧入",
+   "fm": "圧入深さ不良",
+   "effect": "トレッド不揃い・振れ",
+   "S": 6,
+   "cause": "治具摩耗",
+   "O": 3,
+   "prev": "治具点検 週次",
+   "det": "全数 振れ測定",
+   "D": 2,
+   "action": "",
+   "status": "完了"
+  },
+  {
+   "item": "A60 ねじ締め",
+   "fm": "締付不足",
+   "effect": "走行中ステー緩み・脱落",
+   "S": 8,
+   "cause": "ビット摩耗・座面異物",
+   "O": 3,
+   "prev": "ビット交換 5,000 本",
+   "det": "全数 トルク・角度監視",
+   "D": 2,
+   "action": "",
+   "status": "完了"
+  },
+  {
+   "item": "S50 リフロー",
+   "fm": "温度プロファイル逸脱",
+   "effect": "はんだ接合不良（潜在）",
+   "S": 8,
+   "cause": "ヒーター劣化",
+   "O": 2,
+   "prev": "プロファイラ 日次",
+   "det": "AOI＋FCT",
+   "D": 3,
+   "action": "",
+   "status": "完了"
+  },
+  {
+   "item": "A90 梱包",
+   "fm": "異品種混入",
+   "effect": "誤出荷",
+   "S": 6,
+   "cause": "段取替え時の残品",
+   "O": 3,
+   "prev": "品番ラベル照合（バーコード）",
+   "det": "出荷前 全数スキャン",
+   "D": 2,
+   "action": "",
+   "status": "完了"
+  }
+ ],
+ "control_plan": [
+  {
+   "no": "CP-01",
+   "process": "M01 シャーシ成形",
+   "char": "車軸受け穴径",
+   "cls": "CC",
+   "spec": "φ6.00 +0.03/0",
+   "lsl": 6.0,
+   "usl": 6.03,
+   "mean": 6.0148,
+   "sd": 0.0026,
+   "method": "エアマイクロ",
+   "sample": "n=5",
+   "freq": "2 h",
+   "reaction": "停止・隔離・金型点検",
+   "pn": "VW-CHS-100"
+  },
+  {
+   "no": "CP-02",
+   "process": "M01 シャーシ成形",
+   "char": "ホイールベース",
+   "cls": "CC",
+   "spec": "82.00 ±0.05",
+   "lsl": 81.95,
+   "usl": 82.05,
+   "mean": 82.004,
+   "sd": 0.0082,
+   "method": "画像寸法測定機",
+   "sample": "n=5",
+   "freq": "2 h",
+   "reaction": "停止・隔離",
+   "pn": "VW-CHS-100"
+  },
+  {
+   "no": "CP-03",
+   "process": "M03 ホイール成形",
+   "char": "軸穴径",
+   "cls": "CC",
+   "spec": "φ1.95 ±0.01",
+   "lsl": 1.94,
+   "usl": 1.96,
+   "mean": 1.9502,
+   "sd": 0.0016,
+   "method": "ピンゲージ＋エアマイクロ",
+   "sample": "n=8（全キャビ）",
+   "freq": "2 h",
+   "reaction": "停止・隔離",
+   "pn": "VW-WHL-120"
+  },
+  {
+   "no": "CP-04",
+   "process": "M04 タイヤ成形",
+   "char": "外径",
+   "cls": "CC",
+   "spec": "φ26.00 ±0.10",
+   "lsl": 25.9,
+   "usl": 26.1,
+   "mean": 26.018,
+   "sd": 0.0227,
+   "method": "レーザー外径計",
+   "sample": "n=8（全キャビ）",
+   "freq": "1 h（8D 中は 30 分）",
+   "reaction": "停止・全数選別",
+   "pn": "VW-TIR-130"
+  },
+  {
+   "no": "CP-05",
+   "process": "M04 タイヤ成形",
+   "char": "硬度",
+   "cls": "SC",
+   "spec": "A60 ±3",
+   "lsl": 57,
+   "usl": 63,
+   "mean": 60.3,
+   "sd": 0.62,
+   "method": "デュロメータ",
+   "sample": "n=3",
+   "freq": "ロット",
+   "reaction": "ロット保留",
+   "pn": "VW-TIR-130"
+  },
+  {
+   "no": "CP-06",
+   "process": "M02 ボディ成形",
+   "char": "肉厚",
+   "cls": "SC",
+   "spec": "1.00 ±0.05",
+   "lsl": 0.95,
+   "usl": 1.05,
+   "mean": 1.004,
+   "sd": 0.0095,
+   "method": "超音波厚さ計",
+   "sample": "n=3",
+   "freq": "4 h",
+   "reaction": "ロット保留",
+   "pn": "VW-BDY-110"
+  },
+  {
+   "no": "CP-07",
+   "process": "受入 車軸",
+   "char": "軸径",
+   "cls": "CC",
+   "spec": "φ2.000 0/−0.005",
+   "lsl": 1.995,
+   "usl": 2.0,
+   "mean": 1.9974,
+   "sd": 0.0005,
+   "method": "マイクロメータ",
+   "sample": "AQL 0.65",
+   "freq": "ロット",
+   "reaction": "返品・仕入先 8D",
+   "pn": "VW-SFT-170"
+  },
+  {
+   "no": "CP-08",
+   "process": "受入 モーター",
+   "char": "無負荷回転数",
+   "cls": "SC",
+   "spec": "12,500 ±8%",
+   "lsl": 11500,
+   "usl": 13500,
+   "mean": 12540,
+   "sd": 210,
+   "method": "モーターテスター",
+   "sample": "n=32/ロット",
+   "freq": "ロット",
+   "reaction": "ロット保留",
+   "pn": "VW-MTR-180"
+  },
+  {
+   "no": "CP-09",
+   "process": "A60 ねじ締め",
+   "char": "締付トルク",
+   "cls": "SC",
+   "spec": "0.18 ±0.02 N·m",
+   "lsl": 0.16,
+   "usl": 0.2,
+   "mean": 0.1806,
+   "sd": 0.0036,
+   "method": "トルクドライバ（全数記録）",
+   "sample": "全数",
+   "freq": "全数",
+   "reaction": "自動 NG 排出",
+   "pn": "VW-SCR-195"
+  },
+  {
+   "no": "CP-10",
+   "process": "A80 EOL",
+   "char": "ソフトスタート立上り",
+   "cls": "SC",
+   "spec": "120 ±10 ms",
+   "lsl": 110,
+   "usl": 130,
+   "mean": 120.6,
+   "sd": 1.9,
+   "method": "EOL 試験機（電流波形）",
+   "sample": "全数",
+   "freq": "全数",
+   "reaction": "自動 NG 排出",
+   "pn": "VW-PCB-190"
+  },
+  {
+   "no": "CP-11",
+   "process": "A80 EOL",
+   "char": "待機電流",
+   "cls": "SC",
+   "spec": "≤ 25 µA",
+   "lsl": null,
+   "usl": 25,
+   "mean": 14.2,
+   "sd": 1.6,
+   "method": "EOL 試験機",
+   "sample": "全数",
+   "freq": "全数",
+   "reaction": "自動 NG 排出",
+   "pn": "VW-PCB-190"
+  },
+  {
+   "no": "CP-12",
+   "process": "A50 ホイール圧入",
+   "char": "振れ",
+   "cls": "SC",
+   "spec": "≤ 0.05",
+   "lsl": null,
+   "usl": 0.05,
+   "mean": 0.021,
+   "sd": 0.0058,
+   "method": "レーザー変位計",
+   "sample": "全数",
+   "freq": "全数",
+   "reaction": "自動 NG 排出",
+   "pn": "VW-WHL-120"
+  }
+ ],
+ "dvpr": [
+  {
+   "id": "DV-01",
+   "test": "落下試験 1 m ×10 方向",
+   "std": "EN 71-1 / ST2016",
+   "spec": "割れ・鋭利な縁なし",
+   "n": 10,
+   "status": "合格",
+   "result": "10/10 合格（肉厚 1.0 mm）"
+  },
+  {
+   "id": "DV-02",
+   "test": "小部品試験（3 歳未満用ではない旨の表示含む）",
+   "std": "EN 71-1 8.2 / ASTM F963",
+   "spec": "表示・構造適合",
+   "n": 5,
+   "status": "合格",
+   "result": "警告表示 対象年齢 8+"
+  },
+  {
+   "id": "DV-03",
+   "test": "化学（重金属溶出・フタル酸）",
+   "std": "EN 71-3 / ST2016 第3部",
+   "spec": "基準値以下",
+   "n": 3,
+   "status": "実施中",
+   "result": "第三者試験所 W41 報告予定"
+  },
+  {
+   "id": "DV-04",
+   "test": "ホイール抜去力",
+   "std": "社内規格 VW-TS-012",
+   "spec": "≥ 30 N",
+   "n": 30,
+   "status": "合格",
+   "result": "平均 46.2 N、最小 38.9 N"
+  },
+  {
+   "id": "DV-05",
+   "test": "駆動系耐久 100 h（ローラーダイナモ）",
+   "std": "社内規格 VW-TS-020",
+   "spec": "歯飛び・異音なし、速度低下 ≤ 5%",
+   "n": 6,
+   "status": "合格",
+   "result": "速度低下 2.8%"
+  },
+  {
+   "id": "DV-06",
+   "test": "コース走行 500 周（3 レーン標準コース）",
+   "std": "社内規格 VW-TS-021",
+   "spec": "部品脱落なし",
+   "n": 6,
+   "status": "合格",
+   "result": "脱落なし・ステー緩みなし"
+  },
+  {
+   "id": "DV-07",
+   "test": "高温高湿 60℃/90%RH 96 h",
+   "std": "社内規格 VW-TS-030",
+   "spec": "変形 ≤ 0.2 mm・動作正常",
+   "n": 5,
+   "status": "合格",
+   "result": "変形 0.08 mm"
+  },
+  {
+   "id": "DV-08",
+   "test": "熱衝撃 −20↔60℃ 50 サイクル",
+   "std": "社内規格 VW-TS-031",
+   "spec": "割れ・はんだクラックなし",
+   "n": 5,
+   "status": "合格",
+   "result": "異常なし"
+  },
+  {
+   "id": "DV-09",
+   "test": "電池逆挿入 10 分",
+   "std": "社内規格 VW-TS-040",
+   "spec": "発熱 ≤ 15 K・破損なし",
+   "n": 10,
+   "status": "合格",
+   "result": "最大 +3.1 K"
+  },
+  {
+   "id": "DV-10",
+   "test": "EMC（放射・静電気）",
+   "std": "EN 55014-1/-2、IEC 61000-4-2",
+   "spec": "適合",
+   "n": 3,
+   "status": "合格",
+   "result": "ESD ±8 kV 合格"
+  },
+  {
+   "id": "DV-11",
+   "test": "電波法（2.4 GHz）",
+   "std": "技術基準適合証明（認証済モジュール）",
+   "spec": "認証番号表示",
+   "n": 1,
+   "status": "合格",
+   "result": "工事設計認証 取得済モジュール使用"
+  },
+  {
+   "id": "DV-12",
+   "test": "空力 相関（CFD vs 風洞）",
+   "std": "社内規格 VW-TS-050",
+   "spec": "Cd 差 ≤ 15%",
+   "n": 3,
+   "status": "合格",
+   "result": "差 9%"
+  },
+  {
+   "id": "DV-13",
+   "test": "包装落下・振動（輸送）",
+   "std": "JIS Z 0200",
+   "spec": "製品損傷なし",
+   "n": 5,
+   "status": "実施中",
+   "result": "W41 完了予定"
+  },
+  {
+   "id": "DV-14",
+   "test": "RoHS（10 物質）",
+   "std": "EU 2011/65/EU",
+   "spec": "適合",
+   "n": 1,
+   "status": "合格",
+   "result": "全部品 適合宣言取得"
+  }
+ ],
+ "ecn": [
+  {
+   "id": "ECN-0412",
+   "title": "ホイール軸穴径 φ1.96→φ1.95（圧入代増）",
+   "reason": "DV-04 初回 抜去力不足",
+   "affected": [
+    "VW-WHL-120",
+    "MD-120"
+   ],
+   "status": "完了",
+   "week": 21,
+   "disposition": "金型修正、旧品はスクラップ（試作のみ）"
+  },
+  {
+   "id": "ECN-0418",
+   "title": "FW 1.2.4→1.3.0（ソフトスタート 120 ms）",
+   "reason": "DFMEA 突入電流リセット",
+   "affected": [
+    "VW-PCB-190",
+    "FW-VX-LINK"
+   ],
+   "status": "完了",
+   "week": 27,
+   "disposition": "書込治具更新、在庫基板は再書込"
+  },
+  {
+   "id": "ECN-0421",
+   "title": "ボディ肉厚 0.9→1.0 mm",
+   "reason": "DR3 落下試験",
+   "affected": [
+    "VW-BDY-110",
+    "VW-BDY-111",
+    "VW-BDY-112",
+    "MD-110"
+   ],
+   "status": "完了",
+   "week": 26,
+   "disposition": "金型肉盛り修正、重量 +0.9 g"
+  },
+  {
+   "id": "ECN-0425",
+   "title": "ローラーステー 穴位置 ±0.1→±0.05",
+   "reason": "ローラースパンばらつき",
+   "affected": [
+    "VW-STF-150",
+    "VW-STR-151"
+   ],
+   "status": "完了",
+   "week": 33,
+   "disposition": "CNC プログラム更新"
+  },
+  {
+   "id": "ECN-0431",
+   "title": "タイヤ金型 温調回路追加",
+   "reason": "8D-0037 外径 Cpk 1.21",
+   "affected": [
+    "MD-130",
+    "M04"
+   ],
+   "status": "承認待ち（CCB W41）",
+   "week": 40,
+   "disposition": "切替は PP2 から、在庫は全数選別"
+  }
+ ],
+ "eightd": [
+  {
+   "id": "8D-0037",
+   "title": "タイヤ外径ばらつき（Cpk 1.21 < 1.67）",
+   "opened_week": 38,
+   "steps": [
+    {
+     "d": "D1 チーム編成",
+     "s": "完了",
+     "note": "品証・生技・成形・金型メーカー"
+    },
+    {
+     "d": "D2 問題記述",
+     "s": "完了",
+     "note": "キャビ 3・7 で外径 +0.06 側へ偏り"
+    },
+    {
+     "d": "D3 暫定処置",
+     "s": "完了",
+     "note": "全数レーザー選別、測定頻度 30 分"
+    },
+    {
+     "d": "D4 根本原因",
+     "s": "完了",
+     "note": "金型温度 ±4℃ 変動（温調回路不足）"
+    },
+    {
+     "d": "D5 恒久対策の選定",
+     "s": "実施中",
+     "note": "温調回路追加（ECN-0431）"
+    },
+    {
+     "d": "D6 恒久対策の実施・検証",
+     "s": "未着手",
+     "note": "Cpk ≥ 1.67 を 3 ロット確認"
+    },
+    {
+     "d": "D7 再発防止",
+     "s": "未着手",
+     "note": "金型設計標準に温調指針追加"
+    },
+    {
+     "d": "D8 チーム表彰",
+     "s": "未着手",
+     "note": ""
+    }
+   ]
+  }
+ ],
+ "suppliers": [
+  {
+   "id": "SUP-01",
+   "name": "東邦マイクロモーター（架空）",
+   "category": "モーター",
+   "rating": "A",
+   "otd": 98.6,
+   "ppm": 42,
+   "audit": "W12 監査済"
+  },
+  {
+   "id": "SUP-02",
+   "name": "信州精機ベアリング（架空）",
+   "category": "ボールベアリング",
+   "rating": "A",
+   "otd": 99.2,
+   "ppm": 8,
+   "audit": "W14 監査済"
+  },
+  {
+   "id": "SUP-03",
+   "name": "大田精密シャフト（架空）",
+   "category": "シャフト・ピニオン・ねじ",
+   "rating": "B",
+   "otd": 96.1,
+   "ppm": 120,
+   "audit": "W29 監査・改善指示 2 件"
+  },
+  {
+   "id": "SUP-04",
+   "name": "関東エレクトロ商事（架空）",
+   "category": "電子部品（商社）",
+   "rating": "A",
+   "otd": 97.8,
+   "ppm": 3,
+   "audit": "書類監査"
+  },
+  {
+   "id": "SUP-05",
+   "name": "城南プレス工業（架空）",
+   "category": "端子・スイッチ",
+   "rating": "A",
+   "otd": 99.0,
+   "ppm": 25,
+   "audit": "W16 監査済"
+  },
+  {
+   "id": "SUP-06",
+   "name": "北陸マグネティクス（架空）",
+   "category": "磁石",
+   "rating": "A",
+   "otd": 98.9,
+   "ppm": 0,
+   "audit": "書類監査"
+  },
+  {
+   "id": "SUP-07",
+   "name": "湾岸パッケージ印刷（架空）",
+   "category": "パッケージ・ステッカー",
+   "rating": "B",
+   "otd": 95.4,
+   "ppm": 310,
+   "audit": "W31 色ブレ対策中"
+  },
+  {
+   "id": "SUP-08",
+   "name": "中部樹脂商事（架空）",
+   "category": "樹脂材料",
+   "rating": "A",
+   "otd": 99.5,
+   "ppm": 0,
+   "audit": "書類監査"
+  }
+ ],
+ "departments": [
+  {
+   "id": "EXP",
+   "name": "経営企画",
+   "hc": 4,
+   "mission": "事業計画・ポートフォリオ・投資判断",
+   "systems": [
+    "BI"
+   ],
+   "kpis": [
+    [
+     "営業利益率",
+     "14.2%",
+     "≥ 12%"
+    ],
+    [
+     "開発投資回収期間",
+     "2.4 年",
+     "≤ 3 年"
+    ]
+   ]
+  },
+  {
+   "id": "PMK",
+   "name": "商品企画・マーケティング",
+   "hc": 6,
+   "mission": "商品コンセプト・価格・販促・コミュニティ",
+   "systems": [
+    "CRM",
+    "PLM"
+   ],
+   "kpis": [
+    [
+     "予約数（SOP 前）",
+     "8,420 台",
+     "≥ 6,000"
+    ],
+    [
+     "NPS（試走会）",
+     "+46",
+     "≥ +30"
+    ]
+   ]
+  },
+  {
+   "id": "DSN",
+   "name": "デザイン",
+   "hc": 5,
+   "mission": "ボディ造形・CMF・グラフィック",
+   "systems": [
+    "CAD（サーフェス）",
+    "PLM"
+   ],
+   "kpis": [
+    [
+     "AAR 一発承認率",
+     "92%",
+     "≥ 90%"
+    ]
+   ]
+  },
+  {
+   "id": "MEC",
+   "name": "機構設計",
+   "hc": 9,
+   "mission": "シャーシ・駆動系・公差設計・図面",
+   "systems": [
+    "3D CAD",
+    "PLM"
+   ],
+   "kpis": [
+    [
+     "図面出図 遅延",
+     "0 件",
+     "0"
+    ],
+    [
+     "設計変更（G2 後）",
+     "4 件",
+     "≤ 5"
+    ]
+   ]
+  },
+  {
+   "id": "ELE",
+   "name": "電気・ファームウェア",
+   "hc": 7,
+   "mission": "基板回路・FW・アプリ連携・認証",
+   "systems": [
+    "EDA",
+    "Git / CI",
+    "ALM"
+   ],
+   "kpis": [
+    [
+     "FW 不具合（PP 後）",
+     "1 件",
+     "≤ 2"
+    ],
+    [
+     "テスト自動化率",
+     "84%",
+     "≥ 80%"
+    ]
+   ]
+  },
+  {
+   "id": "CAE",
+   "name": "CAE・空力",
+   "hc": 3,
+   "mission": "CFD・構造解析・走行シミュレーション",
+   "systems": [
+    "CFD",
+    "構造解析"
+   ],
+   "kpis": [
+    [
+     "CFD–試験 相関（Cd）",
+     "9%",
+     "≤ 15%"
+    ]
+   ]
+  },
+  {
+   "id": "PRT",
+   "name": "試作",
+   "hc": 4,
+   "mission": "3D プリント・切削・簡易型・試作組立",
+   "systems": [
+    "MES（試作）"
+   ],
+   "kpis": [
+    [
+     "試作リードタイム",
+     "3.5 日",
+     "≤ 5 日"
+    ]
+   ]
+  },
+  {
+   "id": "QA",
+   "name": "品質保証",
+   "hc": 8,
+   "mission": "APQP 推進・PPAP・認証・市場品質・監査",
+   "systems": [
+    "QMS",
+    "SPC"
+   ],
+   "kpis": [
+    [
+     "初期流動 不良率",
+     "—",
+     "≤ 500 ppm"
+    ],
+    [
+     "PPAP 承認",
+     "12/18",
+     "18/18（W44）"
+    ]
+   ]
+  },
+  {
+   "id": "PE",
+   "name": "生産技術",
+   "hc": 7,
+   "mission": "工程設計・設備・金型・治具・ライン立上げ",
+   "systems": [
+    "MES",
+    "PLM"
+   ],
+   "kpis": [
+    [
+     "Run@Rate 達成率",
+     "—",
+     "≥ 100%"
+    ],
+    [
+     "金型 T1→OK ショット",
+     "T3",
+     "≤ T3"
+    ]
+   ]
+  },
+  {
+   "id": "MFG",
+   "name": "製造（成形・SMT・組立・物流）",
+   "hc": 46,
+   "mission": "安全・品質・納期・コスト",
+   "systems": [
+    "MES",
+    "WMS"
+   ],
+   "kpis": [
+    [
+     "OEE（組立）",
+     "—",
+     "≥ 80%"
+    ],
+    [
+     "休業災害",
+     "0",
+     "0"
+    ]
+   ]
+  },
+  {
+   "id": "PUR",
+   "name": "購買・調達",
+   "hc": 5,
+   "mission": "仕入先選定・見積・発注・仕入先品質",
+   "systems": [
+    "ERP",
+    "SRM"
+   ],
+   "kpis": [
+    [
+     "購入品 原価低減",
+     "−4.2%",
+     "−3%"
+    ],
+    [
+     "仕入先 OTD",
+     "97.9%",
+     "≥ 97%"
+    ]
+   ]
+  },
+  {
+   "id": "SCM",
+   "name": "生産管理・SCM",
+   "hc": 5,
+   "mission": "S&OP・基準日程・MRP・在庫",
+   "systems": [
+    "ERP",
+    "APS"
+   ],
+   "kpis": [
+    [
+     "在庫日数",
+     "—",
+     "≤ 18 日"
+    ],
+    [
+     "欠品",
+     "0 件",
+     "0"
+    ]
+   ]
+  },
+  {
+   "id": "SAL",
+   "name": "営業・EC",
+   "hc": 6,
+   "mission": "量販・専門店・EC・海外代理店",
+   "systems": [
+    "CRM",
+    "EC"
+   ],
+   "kpis": [
+    [
+     "受注残",
+     "—",
+     "—"
+    ],
+    [
+     "回収遅延",
+     "0.3%",
+     "≤ 1%"
+    ]
+   ]
+  },
+  {
+   "id": "CS",
+   "name": "カスタマーサポート",
+   "hc": 4,
+   "mission": "問い合わせ・修理・パーツ供給・コミュニティ",
+   "systems": [
+    "CRM（チケット）"
+   ],
+   "kpis": [
+    [
+     "初回解決率",
+     "81%",
+     "≥ 75%"
+    ],
+    [
+     "一次回答",
+     "3.2 h",
+     "≤ 8 h"
+    ]
+   ]
+  },
+  {
+   "id": "FIN",
+   "name": "経理・原価",
+   "hc": 4,
+   "mission": "決算・原価計算・予算・資金",
+   "systems": [
+    "ERP（会計）"
+   ],
+   "kpis": [
+    [
+     "月次締め",
+     "3 営業日",
+     "≤ 4"
+    ],
+    [
+     "原価差異",
+     "—",
+     "±2%"
+    ]
+   ]
+  },
+  {
+   "id": "HR",
+   "name": "人事・総務",
+   "hc": 4,
+   "mission": "採用・教育・技能認定・労務・安全衛生",
+   "systems": [
+    "HRIS",
+    "LMS"
+   ],
+   "kpis": [
+    [
+     "技能認定（多能工）",
+     "68%",
+     "≥ 70%"
+    ],
+    [
+     "離職率",
+     "4.1%",
+     "≤ 6%"
+    ]
+   ]
+  },
+  {
+   "id": "LEG",
+   "name": "法務・知財",
+   "hc": 2,
+   "mission": "契約・商標・意匠・特許・表示",
+   "systems": [
+    "契約管理"
+   ],
+   "kpis": [
+    [
+     "意匠出願",
+     "3 件",
+     "—"
+    ],
+    [
+     "他社権利クリアランス",
+     "完了",
+     "G2 前"
+    ]
+   ]
+  },
+  {
+   "id": "IT",
+   "name": "IT・PLM",
+   "hc": 3,
+   "mission": "PLM/ERP/MES 連携・データ基盤・セキュリティ",
+   "systems": [
+    "PLM",
+    "ERP",
+    "MES"
+   ],
+   "kpis": [
+    [
+     "システム稼働率",
+     "99.95%",
+     "≥ 99.9%"
+    ]
+   ]
+  }
+ ],
+ "value_streams": [
+  {
+   "id": "I2L",
+   "name": "企画〜量産（Idea-to-Launch）",
+   "steps": [
+    [
+     "商品企画書",
+     "PMK",
+     "PLM",
+     "—"
+    ],
+    [
+     "PRD・設計目標",
+     "PMK",
+     "PLM",
+     "G1"
+    ],
+    [
+     "3D 設計・図面",
+     "MEC",
+     "CAD/PLM",
+     "DR2"
+    ],
+    [
+     "試作・評価",
+     "PRT",
+     "MES",
+     "DR3"
+    ],
+    [
+     "工程設計",
+     "PE",
+     "PLM/MES",
+     "DR4"
+    ],
+    [
+     "PPAP",
+     "QA",
+     "QMS",
+     "G4"
+    ],
+    [
+     "SOP",
+     "MFG",
+     "MES",
+     "W46"
+    ]
+   ]
+  },
+  {
+   "id": "P2P",
+   "name": "計画〜生産（Plan-to-Produce）",
+   "steps": [
+    [
+     "需要予測",
+     "SAL",
+     "CRM",
+     "月次"
+    ],
+    [
+     "S&OP 会議",
+     "SCM",
+     "ERP",
+     "月次"
+    ],
+    [
+     "基準日程 MPS",
+     "SCM",
+     "APS",
+     "週次"
+    ],
+    [
+     "MRP 展開",
+     "SCM",
+     "ERP",
+     "日次"
+    ],
+    [
+     "製造指示",
+     "SCM",
+     "MES",
+     "日次"
+    ],
+    [
+     "実績・トレーサビリティ",
+     "MFG",
+     "MES",
+     "リアルタイム"
+    ]
+   ]
+  },
+  {
+   "id": "PR2P",
+   "name": "調達〜支払（Procure-to-Pay）",
+   "steps": [
+    [
+     "購買依頼",
+     "SCM",
+     "ERP",
+     "MRP 起票"
+    ],
+    [
+     "見積・選定",
+     "PUR",
+     "SRM",
+     "3 営業日"
+    ],
+    [
+     "発注",
+     "PUR",
+     "ERP",
+     "承認 1 日"
+    ],
+    [
+     "入荷・受入検査",
+     "QA",
+     "QMS/WMS",
+     "当日"
+    ],
+    [
+     "検収",
+     "PUR",
+     "ERP",
+     "当日"
+    ],
+    [
+     "請求照合（3-way match）",
+     "FIN",
+     "ERP",
+     "月末"
+    ],
+    [
+     "支払",
+     "FIN",
+     "ERP",
+     "翌月末"
+    ]
+   ]
+  },
+  {
+   "id": "O2C",
+   "name": "受注〜入金（Order-to-Cash）",
+   "steps": [
+    [
+     "受注（量販・EC・代理店）",
+     "SAL",
+     "CRM/EC",
+     "即時"
+    ],
+    [
+     "与信確認",
+     "FIN",
+     "ERP",
+     "自動"
+    ],
+    [
+     "在庫引当",
+     "SCM",
+     "ERP/WMS",
+     "即時"
+    ],
+    [
+     "出荷",
+     "MFG",
+     "WMS",
+     "当日"
+    ],
+    [
+     "請求",
+     "FIN",
+     "ERP",
+     "締め日"
+    ],
+    [
+     "入金消込",
+     "FIN",
+     "ERP",
+     "入金日"
+    ]
+   ]
+  },
+  {
+   "id": "R2R",
+   "name": "記帳〜報告（Record-to-Report）",
+   "steps": [
+    [
+     "仕訳（自動連携）",
+     "FIN",
+     "ERP",
+     "日次"
+    ],
+    [
+     "原価計算（標準・差異）",
+     "FIN",
+     "ERP",
+     "月次"
+    ],
+    [
+     "月次締め",
+     "FIN",
+     "ERP",
+     "3 営業日"
+    ],
+    [
+     "管理会計レポート",
+     "EXP",
+     "BI",
+     "月次"
+    ]
+   ]
+  },
+  {
+   "id": "H2R",
+   "name": "採用〜退職（Hire-to-Retire）",
+   "steps": [
+    [
+     "要員計画",
+     "HR",
+     "HRIS",
+     "四半期"
+    ],
+    [
+     "採用",
+     "HR",
+     "HRIS",
+     "—"
+    ],
+    [
+     "教育・技能認定",
+     "HR",
+     "LMS",
+     "継続"
+    ],
+    [
+     "評価・処遇",
+     "HR",
+     "HRIS",
+     "半期"
+    ]
+   ]
+  },
+  {
+   "id": "I2R",
+   "name": "問い合わせ〜解決（Issue-to-Resolution）",
+   "steps": [
+    [
+     "問い合わせ受付",
+     "CS",
+     "CRM",
+     "即時"
+    ],
+    [
+     "一次回答",
+     "CS",
+     "CRM",
+     "≤ 8 h"
+    ],
+    [
+     "不具合解析",
+     "QA",
+     "QMS",
+     "≤ 5 日"
+    ],
+    [
+     "8D・是正",
+     "QA",
+     "QMS",
+     "—"
+    ],
+    [
+     "設計／工程変更（ECR→ECN）",
+     "MEC",
+     "PLM",
+     "CCB"
+    ],
+    [
+     "お客様回答・効果確認",
+     "CS",
+     "CRM",
+     "—"
+    ]
+   ]
+  },
+  {
+   "id": "CHG",
+   "name": "設計変更（ECR→ECN）",
+   "steps": [
+    [
+     "ECR 起票",
+     "MEC",
+     "PLM",
+     "—"
+    ],
+    [
+     "影響分析（BOM・金型・在庫・認証）",
+     "PE",
+     "PLM/ERP",
+     "5 日"
+    ],
+    [
+     "変更審議会 CCB",
+     "QA",
+     "PLM",
+     "週次"
+    ],
+    [
+     "ECN 発行・切替日決定",
+     "MEC",
+     "PLM",
+     "—"
+    ],
+    [
+     "在庫・仕掛処置",
+     "SCM",
+     "ERP",
+     "切替日"
+    ],
+    [
+     "効果確認・PPAP 更新",
+     "QA",
+     "QMS",
+     "—"
+    ]
+   ]
+  }
+ ],
+ "mrp": {
+  "weeks": 12,
+  "start_week": 41,
+  "demand": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   2400,
+   4800,
+   5600,
+   5600,
+   5600,
+   5600,
+   5600
+  ],
+  "mix": {
+   "KST-STD": 0.5,
+   "KST-AERO": 0.25,
+   "KST-LOW": 0.25
+  },
+  "items": [
+   {
+    "pn": "VW-MTR-180",
+    "name": "モーター（3 グレード合算）",
+    "per": 1,
+    "on_hand": 1800,
+    "safety": 3000,
+    "lot": 5000,
+    "lead_w": 4,
+    "receipts": {
+     "3": 5000
+    }
+   },
+   {
+    "pn": "VW-BRG-171",
+    "name": "ベアリング 1150",
+    "per": 4,
+    "on_hand": 6000,
+    "safety": 8000,
+    "lot": 20000,
+    "lead_w": 6,
+    "receipts": {
+     "2": 20000
+    }
+   },
+   {
+    "pn": "VW-BRG-141",
+    "name": "ベアリング 850",
+    "per": 4,
+    "on_hand": 4000,
+    "safety": 8000,
+    "lot": 20000,
+    "lead_w": 6,
+    "receipts": {
+     "2": 20000
+    }
+   },
+   {
+    "pn": "VW-SFT-170",
+    "name": "車軸",
+    "per": 2,
+    "on_hand": 3200,
+    "safety": 4000,
+    "lot": 10000,
+    "lead_w": 4,
+    "receipts": {}
+   },
+   {
+    "pn": "U1",
+    "name": "BLE SoC",
+    "per": 1,
+    "on_hand": 6000,
+    "safety": 4000,
+    "lot": 12000,
+    "lead_w": 12,
+    "receipts": {
+     "5": 12000
+    }
+   },
+   {
+    "pn": "U2",
+    "name": "6軸 IMU",
+    "per": 1,
+    "on_hand": 9000,
+    "safety": 4000,
+    "lot": 10000,
+    "lead_w": 10,
+    "receipts": {}
+   },
+   {
+    "pn": "RESIN-PCABS",
+    "name": "PC/ABS 樹脂（kg）",
+    "per": 0.041,
+    "on_hand": 300,
+    "safety": 150,
+    "lot": 500,
+    "lead_w": 2,
+    "receipts": {}
+   },
+   {
+    "pn": "VW-PKG-200",
+    "name": "パッケージ一式",
+    "per": 1,
+    "on_hand": 2500,
+    "safety": 3000,
+    "lot": 10000,
+    "lead_w": 3,
+    "receipts": {
+     "4": 10000
+    }
+   }
+  ]
+ },
+ "sales_channels": [
+  [
+   "量販店（玩具・ホビー）",
+   0.46
+  ],
+  [
+   "模型専門店",
+   0.22
+  ],
+  [
+   "自社 EC",
+   0.18
+  ],
+  [
+   "海外代理店",
+   0.14
+  ]
+ ],
+ "vave": [
+  {
+   "id": "VE-01",
+   "title": "パッケージ印刷 4C→3C＋ニス（ブランド部のみ 4C）",
+   "owner": "購買・調達",
+   "saving": 12,
+   "status": "合意（W42 切替）"
+  },
+  {
+   "id": "VE-02",
+   "title": "BLE SoC 年間数量契約（36k/年）",
+   "owner": "購買・調達",
+   "saving": 14,
+   "status": "合意"
+  },
+  {
+   "id": "VE-03",
+   "title": "ファミリー金型 MD-160 ホットランナー化（ランナー率 35%→8%）",
+   "owner": "生産技術",
+   "saving": 4,
+   "status": "検討中（投資 ¥1.9M）"
+  },
+  {
+   "id": "VE-04",
+   "title": "ステー CNC 2 枚取り→6 枚取りネスティング",
+   "owner": "生産技術",
+   "saving": 11,
+   "status": "試行中"
+  },
+  {
+   "id": "VE-05",
+   "title": "ねじ M2×8 ×6 → M2×6 ×4＋スナップフィット化",
+   "owner": "機構設計",
+   "saving": 9,
+   "status": "ECR 起票（ECR-0219）"
+  },
+  {
+   "id": "VE-06",
+   "title": "物流 パレット積載 24→36 箱（外装寸法見直し）",
+   "owner": "生産管理・SCM",
+   "saving": 6,
+   "status": "合意"
+  }
+ ],
+ "test_track": {
+  "name": "3 レーン標準コース（社内テストコース）",
+  "lap_m": 42.0,
+  "lanes": 3,
+  "crr": 0.022,
+  "eta_drive": 0.72,
+  "cd": 0.52,
+  "frontal_area_m2": 0.0029,
+  "rho": 1.2,
+  "corner_factor": 0.86
+ },
+ "people": {
+  "total": 130
+ }
+}
